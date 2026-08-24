@@ -178,3 +178,11 @@
 "paint.cooldown" = "%lld sn sonra tekrar hazır";
 "paint.no_slots" = "Klavyenin tuş haritası okunamadı, boyanacak bir şey yok.";
 
+
+/* Uygulamaya göre ışık */
+"settings.app_rules" = "Uygulamaya göre ışık";
+"settings.app_rules.enabled" = "Öndeki uygulamaya göre ışığı değiştir";
+"settings.app_rules.detail" = "Bir uygulama eklediğinde o anki renk ve efekt kaydedilir. Işık yalnızca kuralı olan uygulamalar arasında geçiş yaptığında değişir; klavyeye gereksiz komut yağmuru olmaz.";
+"settings.app_rules.add" = "Uygulama ekle…";
+"settings.app_rules.remove" = "Kaldır";
+"settings.app_rules.active" = "etkin";

@@ -59,6 +59,25 @@ final class AppModel {
   var pendingShortcuts: [String: Shortcut] = [:]
   var keymapLoaded = false
 
+  // App-aware lighting
+  var appRulesEnabled = false {
+    didSet {
+      appRulesEnabled ? startAppWatching() : appWatcher.stop()
+      UserDefaults.standard.set(appRulesEnabled, forKey: Self.appRulesKey)
+    }
+  }
+  var activeAppRule: AppLightingRule?
+  /// Created on first use rather than at launch: building it eagerly meant
+  /// NSWorkspace work ran while the app was still starting up.
+  @ObservationIgnored private var appWatcherStorage: AppProfileWatcher?
+  var appWatcher: AppProfileWatcher {
+    if let appWatcherStorage { return appWatcherStorage }
+    let created = AppProfileWatcher()
+    appWatcherStorage = created
+    return created
+  }
+  private static let appRulesKey = "appRules.enabled"
+
   // Per-key painting
   /// Colours the user has painted, keyed by layout key id.
   var paintedKeys: [String: Color3] = [:]
@@ -147,6 +166,9 @@ final class AppModel {
     if UserDefaults.standard.bool(forKey: Self.monitoringPreferenceKey) {
       startMonitoring()
     }
+    if UserDefaults.standard.bool(forKey: Self.appRulesKey) {
+      appRulesEnabled = true
+    }
   }
 
   private func handleWake() {
@@ -171,6 +193,7 @@ final class AppModel {
     screenTimer = nil
     paintCooldownTimer?.invalidate()
     paintCooldownTimer = nil
+    appWatcherStorage?.stop()
     monitor?.stop()
     monitor = nil
     monitoringEnabled = false
@@ -223,6 +246,32 @@ final class AppModel {
       deviceError = String(describing: error)
       isConnected = false
     }
+  }
+
+  // MARK: - App-aware lighting
+
+  private func startAppWatching() {
+    appWatcher.start { [weak self] rule in
+      guard let self else { return }
+      activeAppRule = rule
+      guard let rule, isConnected else { return }
+      // The watcher only fires on an actual change, so this stays well inside
+      // the firmware's tolerance for lighting commands.
+      mainColor = Color3(rule.red, rule.green, rule.blue)
+      effect = rule.effect
+      applyMainLight()
+    }
+  }
+
+  func addAppRule(bundleID: String, name: String) {
+    appWatcher.add(
+      AppLightingRule(
+        bundleID: bundleID, name: name, rgb: mainColor.rgb, effect: effect))
+  }
+
+  func removeAppRule(_ rule: AppLightingRule) {
+    appWatcher.remove(rule)
+    if activeAppRule?.id == rule.id { activeAppRule = nil }
   }
 
   // MARK: - Painting

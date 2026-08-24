@@ -52,6 +52,10 @@ struct SettingsView: View {
         }
       }
 
+      Section("settings.app_rules") {
+        appRulesSection
+      }
+
       Section("settings.device") {
         if let profile = model.profile {
           LabeledContent("settings.device.model", value: profile.displayName)
@@ -83,6 +87,51 @@ struct SettingsView: View {
       }
     }
     .formStyle(.grouped)
+  }
+
+  /// Lighting that follows the frontmost app. Rules are made from whatever
+  /// colour and effect are set right now, which is easier to reason about than
+  /// a separate editor.
+  @ViewBuilder private var appRulesSection: some View {
+    @Bindable var model = model
+
+    Toggle("settings.app_rules.enabled", isOn: $model.appRulesEnabled)
+    Text("settings.app_rules.detail")
+      .font(.caption)
+      .foregroundStyle(.secondary)
+
+    if model.appRulesEnabled {
+      ForEach(model.appWatcher.rules) { rule in
+        HStack(spacing: 10) {
+          RoundedRectangle(cornerRadius: 5)
+            .fill(Color(
+              red: Double(rule.red) / 255, green: Double(rule.green) / 255,
+              blue: Double(rule.blue) / 255))
+            .frame(width: 22, height: 18)
+          Text(rule.name)
+          Text(rule.effect.rawValue.capitalized)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          if model.activeAppRule?.id == rule.id {
+            Text("settings.app_rules.active")
+              .font(.caption2)
+              .foregroundStyle(.tint)
+          }
+          Spacer()
+          Button("settings.app_rules.remove") { model.removeAppRule(rule) }
+            .buttonStyle(.link)
+        }
+      }
+
+      Menu("settings.app_rules.add") {
+        ForEach(AppProfileWatcher.runningApps(), id: \.bundleID) { app in
+          Button(app.name) {
+            model.addAppRule(bundleID: app.bundleID, name: app.name)
+          }
+        }
+      }
+      .frame(width: 220)
+    }
   }
 
   /// The panel's resolution cannot be asked for — the firmware reports ready

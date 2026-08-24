@@ -178,3 +178,11 @@
 "paint.cooldown" = "Ready again in %lld s";
 "paint.no_slots" = "Could not read the keyboard's key map, so there is nothing to paint onto.";
 
+
+/* App-aware lighting */
+"settings.app_rules" = "Lighting per app";
+"settings.app_rules.enabled" = "Change the lighting with the frontmost app";
+"settings.app_rules.detail" = "Adding an app records whatever colour and effect are set right now. The lighting only changes when you switch between apps that have rules, so it never floods the keyboard with commands.";
+"settings.app_rules.add" = "Add an app…";
+"settings.app_rules.remove" = "Remove";
+"settings.app_rules.active" = "active";
