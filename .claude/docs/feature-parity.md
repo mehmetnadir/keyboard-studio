@@ -45,11 +45,42 @@ So the read path is live and the write path stays closed until it is proven on
 hardware — with the safest possible first test: the knob's press slot, which is
 currently unassigned, so a mistake there breaks nothing.
 
+## Keymap write — six shapes tried, none worked (2026-08-24)
+
+Tested on hardware against the knob's press slot (98, page 6 index 2), which is
+unassigned, with the whole page backed up first. Nothing changed, so nothing
+broke — but nothing wrote either:
+
+| Shape | Result |
+|---|---|
+| whole page, data at byte 3, bit7 | no change |
+| single slot `[0x09, 0, page, index] + 4 bytes`, bit7 | no change |
+| single slot by global index, bit7 | no change |
+| whole page, data at byte 8 (screen-style), bit7 | no change |
+| single slot, bit8 (lighting-style) | no change |
+| global slot, bit8 | no change |
+
+Still to try, roughly in order of likelihood:
+
+1. **The read may be stale rather than the write failing.** `GET_USERPIC` is
+   documented as returning data that does not reflect writes; the keymap read
+   may behave the same. Re-open the device — or replug it — before reading back,
+   and test by feel (does the knob mute?) rather than by read-back alone.
+2. **An unlock or begin/commit step.** Many boards in this family gate writes
+   behind a mode change, and commit them with a separate save command.
+3. **A different opcode.** `0x09` is `SET_KEYMATRIX` on the yc500 lineage per
+   the vendor bundle, but that mapping is from a catalogue, not measured here.
+4. Reading the vendor WebHID bundle's own keymap writer, which is the
+   licence-clean primary source for the exact byte layout.
+
+Until one of these lands, remapping, macros and knob assignment stay read-only.
+`kstudio keymap --test-write` re-runs the experiment safely.
+
 ## Order of work
 
-1. Verify the keymap write on the unassigned knob press slot
-2. Knob assignment (write) — smallest useful surface
-3. Key remapping page — the layout canvas already exists
+1. Verify the keymap write — six shapes failed, see above for what is left
+2. Knob assignment (write) — smallest useful surface, blocked on the above
+3. Key remapping page — the canvas and the shortcut catalogue already exist
 4. Macros (50 slots, needs a recorder UI)
 5. Layers, then onboard profiles
 6. Per-key painting UI (protocol ready, cadence-limited)

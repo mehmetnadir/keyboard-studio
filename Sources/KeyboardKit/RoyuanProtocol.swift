@@ -14,7 +14,7 @@ public enum Proto {
   static let pid = 0x4015
   static let vendorUsagePage = 0xFFFF
   static let vendorUsage = 0x0002
-  static let reportLen = 64
+  public static let reportLen = 64
 
   static let opGetRev: UInt8 = 0x80
   /// Whoami: replies with a little-endian u32 model id in bytes 1..4.
@@ -22,7 +22,7 @@ public enum Proto {
   /// Keymap read. Slots are 4 bytes; byte 0 is the action type.
   public static let opGetKeymap: UInt8 = 0x89
   /// Keymap write — NOT used yet. Writing the wrong slot remaps the wrong key.
-  static let opSetKeymap: UInt8 = 0x09
+  public static let opSetKeymap: UInt8 = 0x09
   static let opGetKBOption: UInt8 = 0x86
   static let opSetKBOption: UInt8 = 0x06
   static let opSetLEDParam: UInt8 = 0x07

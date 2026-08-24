@@ -97,6 +97,13 @@ public final class Keyboard {
     try query(cmd, mode: mode == .bit7 ? .bit7 : .bit8)
   }
 
+  /// Sends a raw command for protocol work that has not yet been wrapped in a
+  /// typed API — currently the keymap write, which is still being proven.
+  /// Ordinary features should not call this.
+  public func sendRaw(_ cmd: [UInt8], mode: ChecksumModeSelector = .bit7) throws {
+    try sendFeature(cmd, mode: mode == .bit7 ? .bit7 : .bit8)
+  }
+
   /// Asks whether the panel would accept a frame of this size, without sending
   /// any pixels. Used to discover the real screen resolution rather than
   /// trusting a hard-coded constant.
