@@ -143,3 +143,11 @@
 "shortcuts.assign" = "Ata";
 "shortcuts.custom_hint" = "Tek bir harf ya da rakam yaz; ya da Space için 0x2C gibi ham bir kod gir.";
 "shortcuts.write_pending" = "Atamalar şimdilik burada tutuluyor. Klavyeye yazılması, keymap yazma komutu donanımda kanıtlanana kadar açılmayacak — yanlış bir slot gerçek bir tuşu sessizce değiştirir.";
+
+/* Ekran modları */
+"screen.mode" = "Klavyede göster";
+"screen.mode.off" = "Kapalı";
+"screen.mode.stats" = "Yazım istatistiği";
+"screen.mode.now_playing" = "Çalan şarkı";
+"screen.now_playing.detail" = "Apple Music, Spotify veya YouTube Music'te çalan parçayı gösterir, şarkı değişince günceller. Çalışan uygulamadan yerel olarak okunur — internetten hiçbir şey çekilmez.";
+"screen.nothing_playing" = "Şu an bir şey çalmıyor.";

@@ -2,6 +2,7 @@ import Foundation
 import KeyboardKit
 import Observation
 import StatsCore
+import NowPlaying
 import StatsScreen
 import SwiftUI
 
@@ -63,11 +64,17 @@ final class AppModel {
   var knobBindings: [Knob.Action: Knob.Binding] = [:]
   var knobError: String?
 
-  /// Mirrors today's card onto the keyboard screen while the app runs.
-  var screenShowsStats = false {
-    didSet { screenShowsStats ? startScreenMirror() : stopScreenMirror() }
+  /// What the keyboard screen is showing while the app runs.
+  var screenMode: ScreenMode = .off {
+    didSet { screenModeChanged() }
   }
   var screenStatus: String?
+  var nowPlaying: NowPlaying?
+
+  enum ScreenMode: String, CaseIterable, Identifiable {
+    case off, stats, nowPlaying
+    var id: String { rawValue }
+  }
 
   private var store: StatsStore?
   private var monitor: KeyMonitor?
@@ -358,17 +365,58 @@ final class AppModel {
 
   // MARK: - Screen mirror
 
-  private func startScreenMirror() {
-    Task { await pushStatsToScreen() }
-    screenTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-      Task { @MainActor in await self?.pushStatsToScreen() }
+  private func screenModeChanged() {
+    screenTimer?.invalidate()
+    screenTimer = nil
+    guard screenMode != .off else {
+      screenStatus = nil
+      return
+    }
+    Task { await refreshScreen() }
+    // Now playing changes often; statistics barely move within an hour.
+    let interval: TimeInterval = screenMode == .nowPlaying ? 5 : 300
+    screenTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) {
+      [weak self] _ in
+      Task { @MainActor in await self?.refreshScreen() }
     }
   }
 
-  private func stopScreenMirror() {
-    screenTimer?.invalidate()
-    screenTimer = nil
-    screenStatus = nil
+  private func refreshScreen() async {
+    switch screenMode {
+    case .off: break
+    case .stats: await pushStatsToScreen()
+    case .nowPlaying: await pushNowPlayingToScreen()
+    }
+  }
+
+  /// Only uploads when the track actually changed — the panel write takes about
+  /// a second, and re-sending the same frame every five seconds is wasteful.
+  func pushNowPlayingToScreen() async {
+    let playing = PlayerBridge.current()
+    guard playing != nowPlaying else { return }
+    nowPlaying = playing
+
+    guard let playing else {
+      screenStatus = "screen.nothing_playing".localized
+      return
+    }
+    guard isConnected else {
+      screenStatus = "screen.connect_to_update".localized
+      return
+    }
+    let panel = profile?.capabilities.screen
+    let card = NowPlayingCard.render(
+      playing, width: panel?.width ?? Screen.width, height: panel?.height ?? Screen.height)
+    do {
+      try await Task.detached(priority: .utility) {
+        let keyboard = try Keyboard()
+        defer { keyboard.close() }
+        try Screen.writeImage(card, on: keyboard)
+      }.value
+      screenStatus = "\(playing.title) — \(playing.artist)"
+    } catch {
+      screenStatus = String(describing: error)
+    }
   }
 
   func pushStatsToScreen() async {

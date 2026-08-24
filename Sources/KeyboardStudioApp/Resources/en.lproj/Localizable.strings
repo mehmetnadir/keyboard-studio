@@ -143,3 +143,11 @@
 "shortcuts.assign" = "Assign";
 "shortcuts.custom_hint" = "Type a single letter or digit, or a raw usage like 0x2C for Space.";
 "shortcuts.write_pending" = "Assignments are held here for now. Writing them to the keyboard is not enabled until the keymap write command is proven on hardware — a wrong slot would silently remap a real key.";
+
+/* Screen modes */
+"screen.mode" = "Show on keyboard";
+"screen.mode.off" = "Nothing";
+"screen.mode.stats" = "Typing stats";
+"screen.mode.now_playing" = "Now playing";
+"screen.now_playing.detail" = "Shows the track from Apple Music, Spotify or YouTube Music, updating when it changes. Read locally from the running player — nothing is fetched from the internet.";
+"screen.nothing_playing" = "Nothing playing right now.";

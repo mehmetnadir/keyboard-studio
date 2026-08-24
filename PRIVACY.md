@@ -73,6 +73,17 @@ to trust:
    over. The app also checks the flag itself and shows "Paused — macOS is
    protecting your input", so you can watch it happen.
 
+## Now playing
+
+Showing the current track asks the running player directly — Apple Music and
+Spotify answer Apple Events, and YouTube Music is read from the browser tab's
+title. macOS will ask your permission the first time, per app.
+
+This reads a title, an artist and how far through the track you are. It does
+not read anything else from those apps, and it does not reach the internet:
+album art is deliberately not fetched, which is also why the card is text.
+Turning the screen mode off stops the asking entirely.
+
 ## Verify it yourself
 
 ```sh

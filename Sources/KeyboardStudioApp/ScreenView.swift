@@ -46,8 +46,15 @@ struct ScreenView: View {
       Divider()
 
       VStack(alignment: .leading, spacing: 6) {
-        Toggle("screen.show_stats", isOn: $model.screenShowsStats)
-        Text("screen.show_stats.detail")
+        Picker("screen.mode", selection: $model.screenMode) {
+          Text("screen.mode.off").tag(AppModel.ScreenMode.off)
+          Text("screen.mode.stats").tag(AppModel.ScreenMode.stats)
+          Text("screen.mode.now_playing").tag(AppModel.ScreenMode.nowPlaying)
+        }
+        .pickerStyle(.segmented)
+        Text(
+          model.screenMode == .nowPlaying
+            ? "screen.now_playing.detail" : "screen.show_stats.detail")
           .font(.caption)
           .foregroundStyle(.tertiary)
         if let screenStatus = model.screenStatus {

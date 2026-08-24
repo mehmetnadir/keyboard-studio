@@ -19,7 +19,8 @@ let package = Package(
     .target(name: "StatsScreen", dependencies: ["KeyboardKit", "StatsCore", "NowPlaying"]),
     .executableTarget(name: "kstudio", dependencies: ["KeyboardKit", "StatsCore", "StatsScreen"]),
     .executableTarget(
-      name: "KeyboardStudioApp", dependencies: ["KeyboardKit", "StatsCore", "StatsScreen"],
+      name: "KeyboardStudioApp",
+      dependencies: ["KeyboardKit", "StatsCore", "StatsScreen", "NowPlaying"],
       resources: [.process("Resources")]),
     .testTarget(name: "KeyboardKitTests", dependencies: ["KeyboardKit"]),
     .testTarget(name: "StatsCoreTests", dependencies: ["StatsCore"]),

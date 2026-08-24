@@ -25,6 +25,8 @@
   </array>
   <key>LSMinimumSystemVersion</key>
   <string>14.0</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Keyboard Studio asks Apple Music, Spotify or your browser what is playing, so it can show the track on the keyboard's screen. Nothing is sent anywhere.</string>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSHumanReadableCopyright</key>
