@@ -1,8 +1,25 @@
+import AppKit
 import Foundation
 import IOKit.hid
 
 public enum MonitorError: Error, CustomStringConvertible {
   case inputMonitoringDenied(IOReturn)
+
+  /// True when the failure is the missing Input Monitoring grant, which the
+  /// user can fix — as opposed to something they can only report.
+  public var isPermissionDenied: Bool {
+    if case .inputMonitoringDenied = self { return true }
+    return false
+  }
+
+  /// Opens System Settings straight at Privacy & Security → Input Monitoring.
+  @discardableResult
+  public static func openInputMonitoringSettings() -> Bool {
+    guard let url = URL(
+      string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+    else { return false }
+    return NSWorkspace.shared.open(url)
+  }
 
   public var description: String {
     switch self {

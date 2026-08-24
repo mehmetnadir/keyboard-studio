@@ -32,7 +32,7 @@ public struct DeviceProfile: Codable, Sendable, Identifiable, Hashable {
   }
   /// Which wire protocol drives it. Boards from one manufacturer share a family.
   public let family: ProtocolFamily
-  public let capabilities: Capabilities
+  public var capabilities: Capabilities
   /// Layout file name under Layouts/, without the extension. Nil means the
   /// board has no drawn layout yet — lighting and screen still work.
   public let layout: String?

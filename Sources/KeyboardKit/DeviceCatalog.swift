@@ -7,7 +7,10 @@ public enum DeviceCatalog {
   /// `~/Library/Application Support/KeyboardStudio/Devices/` — so a board can
   /// be added without rebuilding.
   public static func all() -> [DeviceProfile] {
-    (bundled() + userSupplied()).sorted { $0.id < $1.id }
+    var byID: [String: DeviceProfile] = [:]
+    for profile in bundled() { byID[profile.id] = profile }
+    for profile in userSupplied() { byID[profile.id] = profile }  // user wins
+    return byID.values.sorted { $0.id < $1.id }
   }
 
   public static func profile(id: String) -> DeviceProfile? {
@@ -27,6 +30,26 @@ public enum DeviceCatalog {
     connected().first
   }
 
+  /// Writes a profile into the user directory, where it overrides the bundled
+  /// one of the same id. This is how a correction the user made — a measured
+  /// screen size, say — survives an app update.
+  @discardableResult
+  public static func save(_ profile: DeviceProfile) -> Bool {
+    let folder = userDirectory
+    do {
+      try FileManager.default.createDirectory(
+        at: folder, withIntermediateDirectories: true,
+        attributes: [.posixPermissions: 0o700])
+      let encoder = JSONEncoder()
+      encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+      let data = try encoder.encode(profile)
+      try data.write(to: folder.appendingPathComponent("\(profile.id).json"))
+      return true
+    } catch {
+      return false
+    }
+  }
+
   // MARK: - Loading
 
   private static func bundled() -> [DeviceProfile] {
@@ -41,7 +64,7 @@ public enum DeviceCatalog {
     return base.appendingPathComponent("KeyboardStudio/Devices", isDirectory: true)
   }
 
-  private static func userSupplied() -> [DeviceProfile] {
+  static func userSupplied() -> [DeviceProfile] {
     guard let entries = try? FileManager.default.contentsOfDirectory(
       at: userDirectory, includingPropertiesForKeys: nil)
     else { return [] }

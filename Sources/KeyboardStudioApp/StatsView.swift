@@ -21,9 +21,23 @@ struct StatsView: View {
         }
         champions
         if let error = model.statsError {
-          Text(error)
-            .font(.caption)
-            .foregroundStyle(.red)
+          VStack(alignment: .leading, spacing: 8) {
+            Text(error)
+              .font(.caption)
+              .foregroundStyle(.red)
+            if model.needsInputMonitoring {
+              HStack(spacing: 10) {
+                Button("stats.open_settings") { model.openInputMonitoringSettings() }
+                  .buttonStyle(.borderedProminent)
+                Button("stats.retry") { model.startMonitoring() }
+              }
+              Text("stats.permission_hint")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+          }
+          .padding(12)
+          .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
         }
       }
       .padding(20)
@@ -41,13 +55,18 @@ struct StatsView: View {
       VStack(alignment: .leading, spacing: 2) {
         Text("stats.counting_off.title")
           .font(.headline)
-        Text("stats.counting_off.detail")
+        Text(model.needsInputMonitoring ? "stats.permission_needed" : "stats.counting_off.detail")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
       Spacer()
-      Button("stats.start_counting") { model.startMonitoring() }
-        .buttonStyle(.borderedProminent)
+      if model.needsInputMonitoring {
+        Button("stats.open_settings") { model.openInputMonitoringSettings() }
+          .buttonStyle(.borderedProminent)
+      } else {
+        Button("stats.start_counting") { model.startMonitoring() }
+          .buttonStyle(.borderedProminent)
+      }
     }
     .padding(14)
     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))

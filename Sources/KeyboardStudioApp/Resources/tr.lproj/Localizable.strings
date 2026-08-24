@@ -111,6 +111,23 @@
 "knob.absent" = "Bu klavyede döner düğme yok.";
 "knob.searching" = "Düğmenin mevcut atamaları okunuyor…";
 "knob.storage" = "Atamalar klavyenin kendi hafızasında tutulur; kabloyu çıkarsan da kalır, bu uygulama kapalıyken de çalışır.";
-"knob.slots_detail" = "Keymap sayfası %lld içinde bulundu.";
+"knob.slots_detail" = "Keymap slotları %lld / %lld / %lld.";
 "knob.identity_mismatch" = "Bağlı klavye bu profille eşleşmiyor — keymap'ine dokunulmuyor.";
 "knob.write_pending" = "Şimdilik yalnızca gösteriliyor: atamaların klavyeye yazılması henüz açık değil — keymap yazma komutu donanımda doğrulanmadı ve yanlış slot gerçek bir tuşu değiştirir.";
+
+/* İzin */
+"stats.open_settings" = "Sistem Ayarları'nı aç";
+"stats.retry" = "Tekrar dene";
+"stats.permission_needed" = "Herhangi bir uygulamanın tuş basışlarını sayabilmesi için macOS'un iznin gerekiyor.";
+"stats.permission_hint" = "Açılan pencerede Keyboard Studio'yu aç, sonra buraya dönüp Tekrar dene'ye bas.";
+"settings.permission" = "Giriş İzleme";
+
+/* Ekran boyutu */
+"settings.screen.presets" = "Yaygın boyutlar";
+"settings.screen.test" = "Klavyede dene";
+"settings.screen.save" = "Doğrulandı olarak kaydet";
+"settings.screen.detail" = "Klavye her boyuttaki kareyi itiraz etmeden kabul ediyor, bu yüzden gerçek çözünürlük sorulamaz — görülmesi gerekir. Dene, renk bantları gönderir: bantlar paneli kenardan kenara dolduruyorsa boyut doğrudur. Kaydet, bunu doğrulanmış olarak işaretler ve güncellemelerde korur.";
+"screen.size.invalid" = "8 ile 512 arasında bir genişlik ve yükseklik gir.";
+"screen.size.tested" = "Gönderildi. Klavyeye bak: bantlar paneli tam doldurmalı.";
+"screen.size.saved" = "Kaydedildi ve doğrulandı olarak işaretlendi.";
+"screen.size.save_failed" = "Profil yazılamadı.";

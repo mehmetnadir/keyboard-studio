@@ -64,22 +64,23 @@ public enum Knob {
     mediaOptions.first { $0.code == code }?.name
   }
 
-  /// Where a model keeps its knob slots. `page` and `index` address the same
-  /// slot the keymap read/write commands use.
+  /// Where a model keeps its knob actions, as global keymap slot numbers.
+  ///
+  /// Global rather than page-relative because the three actions need not share
+  /// a page: on the K86 the turns sit at 96/97, at the end of the matrix, while
+  /// mute is at 78.
   public struct SlotMap: Sendable, Equatable {
-    public var page: Int
     public var turnLeft: Int
     public var turnRight: Int
     public var press: Int
 
-    public init(page: Int, turnLeft: Int, turnRight: Int, press: Int) {
-      self.page = page
+    public init(turnLeft: Int, turnRight: Int, press: Int) {
       self.turnLeft = turnLeft
       self.turnRight = turnRight
       self.press = press
     }
 
-    public func index(for action: Action) -> Int {
+    public func slot(for action: Action) -> Int {
       switch action {
       case .turnLeft: turnLeft
       case .turnRight: turnRight

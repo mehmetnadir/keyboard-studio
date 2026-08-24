@@ -14,7 +14,7 @@ struct KnobView: View {
             .foregroundStyle(.secondary)
         } else if let slots = model.knobSlots {
           ForEach(Knob.Action.allCases) { action in
-            KnobActionRow(action: action, slotIndex: slots.index(for: action))
+            KnobActionRow(action: action, slotIndex: slots.slot(for: action))
           }
           footnote
         } else if model.isConnected {
@@ -59,8 +59,8 @@ struct KnobView: View {
       Text("knob.storage")
         .font(.caption)
         .foregroundStyle(.tertiary)
-      if let page = model.knobSlots?.page {
-        Text("knob.slots_detail \(page)")
+      if let slots = model.knobSlots {
+        Text("knob.slots_detail \(slots.turnLeft) \(slots.turnRight) \(slots.press)")
           .font(.caption2.monospaced())
           .foregroundStyle(.tertiary)
       }

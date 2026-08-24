@@ -36,6 +36,9 @@ final class AppModel {
   var records: Records?
   var monthChampions: [KeyStat] = []
   var statsError: String?
+  /// Set when counting failed specifically because Input Monitoring is not
+  /// granted — the one error the user can fix from here.
+  var needsInputMonitoring = false
   var monitoringEnabled = false
   /// True when counting is on but no K86 is visible to the HID manager, which
   /// would otherwise look like "counting works, you just never type".
@@ -43,6 +46,11 @@ final class AppModel {
   /// macOS is protecting keyboard input right now (a password field is
   /// focused), so nothing is being counted.
   var pausedBySecureInput = false
+
+  // Screen geometry the user can correct when detection is not possible
+  var screenWidthText = ""
+  var screenHeightText = ""
+  var screenSaveMessage: String?
 
   // Knob
   var knobSlots: Knob.SlotMap?
@@ -156,6 +164,10 @@ final class AppModel {
       layout = connected?.layout.flatMap(KeyboardLayout.load(named:))
       knobSlots = nil
       knobBindings = [:]
+      if let screen = connected?.capabilities.screen {
+        screenWidthText = String(screen.width)
+        screenHeightText = String(screen.height)
+      }
     }
     guard isConnected else {
       firmware = nil
@@ -179,6 +191,58 @@ final class AppModel {
       deviceError = String(describing: error)
       isConnected = false
     }
+  }
+
+  // MARK: - Screen geometry
+
+  /// Sends a calibration pattern at the entered size so the user can see
+  /// whether it fits the panel. Nothing is saved by this.
+  func testScreenSize() async {
+    guard let size = enteredScreenSize else {
+      screenSaveMessage = "screen.size.invalid".localized
+      return
+    }
+    isUploading = true
+    defer { isUploading = false }
+    do {
+      try await Task.detached(priority: .userInitiated) {
+        let keyboard = try Keyboard()
+        defer { keyboard.close() }
+        let frame = Screen.bandPattern(width: size.width, height: size.height)
+        try Screen.writeImage(frame, on: keyboard)
+      }.value
+      screenSaveMessage = "screen.size.tested".localized
+    } catch {
+      screenSaveMessage = String(describing: error)
+    }
+  }
+
+  /// Records the size the user confirmed, marking it verified — a human looked
+  /// at the panel, which is the only evidence this protocol allows.
+  func saveScreenSize() {
+    guard var profile, let size = enteredScreenSize else {
+      screenSaveMessage = "screen.size.invalid".localized
+      return
+    }
+    var screen = profile.capabilities.screen
+      ?? DeviceProfile.ScreenSpec(width: size.width, height: size.height)
+    screen.width = size.width
+    screen.height = size.height
+    screen.verified = true
+    profile.capabilities.screen = screen
+    if DeviceCatalog.save(profile) {
+      self.profile = profile
+      screenSaveMessage = "screen.size.saved".localized
+    } else {
+      screenSaveMessage = "screen.size.save_failed".localized
+    }
+  }
+
+  private var enteredScreenSize: (width: Int, height: Int)? {
+    guard let width = Int(screenWidthText), let height = Int(screenHeightText),
+      (8...512).contains(width), (8...512).contains(height)
+    else { return nil }
+    return (width, height)
   }
 
   // MARK: - Knob
@@ -324,11 +388,17 @@ final class AppModel {
       monitoringEnabled = true
       keyboardNotDetected = monitor.matchedDeviceCount == 0
       statsError = nil
+      needsInputMonitoring = false
       UserDefaults.standard.set(true, forKey: Self.monitoringPreferenceKey)
     } catch {
       statsError = String(describing: error)
+      needsInputMonitoring = (error as? MonitorError)?.isPermissionDenied ?? false
       monitoringEnabled = false
     }
+  }
+
+  func openInputMonitoringSettings() {
+    MonitorError.openInputMonitoringSettings()
   }
 
   func stopMonitoring() {

@@ -111,6 +111,23 @@
 "knob.absent" = "This keyboard has no knob.";
 "knob.searching" = "Reading the knob's current assignments…";
 "knob.storage" = "Assignments live in the keyboard's own keymap, so they survive unplugging and work without this app.";
-"knob.slots_detail" = "Found on keymap page %lld.";
+"knob.slots_detail" = "Keymap slots %lld / %lld / %lld.";
 "knob.identity_mismatch" = "The connected keyboard does not match this profile — not touching its keymap.";
 "knob.write_pending" = "Shown only: writing knob assignments to the keyboard is not enabled yet — the keymap write command still needs verifying on hardware, and a wrong slot would remap a real key.";
+
+/* Permission */
+"stats.open_settings" = "Open System Settings";
+"stats.retry" = "Try again";
+"stats.permission_needed" = "macOS needs your permission before any app can count key presses.";
+"stats.permission_hint" = "In the window that opens, switch on Keyboard Studio, then come back and press Try again.";
+"settings.permission" = "Input Monitoring";
+
+/* Screen size */
+"settings.screen.presets" = "Common sizes";
+"settings.screen.test" = "Test on keyboard";
+"settings.screen.save" = "Save as verified";
+"settings.screen.detail" = "The keyboard accepts any frame size without complaining, so its real resolution has to be seen rather than asked for. Test sends colour bands: if they fill the panel edge to edge, the size is right. Saving marks it verified and keeps it across updates.";
+"screen.size.invalid" = "Enter a width and height between 8 and 512.";
+"screen.size.tested" = "Sent. Look at the keyboard: bands should fill the panel exactly.";
+"screen.size.saved" = "Saved and marked verified.";
+"screen.size.save_failed" = "Could not write the profile.";

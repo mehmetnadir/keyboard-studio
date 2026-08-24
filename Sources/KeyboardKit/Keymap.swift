@@ -23,37 +23,50 @@ public enum Keymap {
     return slots[index]
   }
 
+  /// Global slot number from a page and an index within it.
+  public static func globalSlot(page: Int, index: Int) -> Int {
+    page * slotsPerPage + index
+  }
+
+  public static func location(of slot: Int) -> (page: Int, index: Int) {
+    (slot / slotsPerPage, slot % slotsPerPage)
+  }
+
   /// Finds a model's knob slots by looking for the consumer-control entries the
-  /// firmware ships with — a knob defaults to volume down/up.
+  /// firmware ships with: volume down, volume up and mute.
   ///
-  /// Discovery beats hard-coding: slot numbers differ between models even
-  /// within this protocol family.
-  public static func discoverKnobSlots(on kb: Keyboard, pages: Int = 32) throws -> Knob.SlotMap? {
+  /// Discovery beats hard-coding — slot numbers differ between models even
+  /// within this protocol family, and the three actions do not have to sit
+  /// next to each other. On the K86 the turn actions land at the very end of
+  /// the matrix while mute sits back among the function keys.
+  public static func discoverKnobSlots(on kb: Keyboard, pages: Int = 8) throws -> Knob.SlotMap? {
+    var found: [Int: Int] = [:]  // consumer usage -> global slot
     for page in 0..<pages {
       let slots = try readPage(page, on: kb)
-      let media = slots.enumerated().filter { $0.element.first == 0x03 }
-      // A knob contributes a pair of consumer entries sitting next to each
-      // other; anything else on the board would be a lone media key.
-      guard media.count >= 2 else { continue }
-      let down = media.first { $0.element[2] == 0xEA }
-      let up = media.first { $0.element[2] == 0xE9 }
-      guard let down, let up else { continue }
-      // The press slot is the one directly after the pair.
-      let press = max(down.offset, up.offset) + 1
-      return Knob.SlotMap(
-        page: page, turnLeft: down.offset, turnRight: up.offset, press: press)
+      for (index, bytes) in slots.enumerated() where bytes.first == 0x03 {
+        let usage = Int(bytes[2])
+        if found[usage] == nil {
+          found[usage] = globalSlot(page: page, index: index)
+        }
+      }
     }
-    return nil
+    guard let down = found[0xEA], let up = found[0xE9] else { return nil }
+    // Mute is the knob's press on every board seen so far; if it is missing,
+    // fall back to the slot after the turn pair rather than guessing wildly.
+    let press = found[0xE2] ?? (max(down, up) + 1)
+    return Knob.SlotMap(turnLeft: down, turnRight: up, press: press)
   }
 
   /// Current bindings for the three knob actions.
   public static func readKnob(_ map: Knob.SlotMap, on kb: Keyboard) throws
     -> [Knob.Action: Knob.Binding]
   {
-    let slots = try readPage(map.page, on: kb)
+    var pageCache: [Int: [[UInt8]]] = [:]
     var result: [Knob.Action: Knob.Binding] = [:]
     for action in Knob.Action.allCases {
-      let index = map.index(for: action)
+      let (page, index) = location(of: map.slot(for: action))
+      let slots = try pageCache[page] ?? readPage(page, on: kb)
+      pageCache[page] = slots
       result[action] = index < slots.count
         ? Knob.Binding(slotBytes: slots[index]) : .unassigned
     }
