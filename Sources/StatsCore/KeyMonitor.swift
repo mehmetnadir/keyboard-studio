@@ -93,8 +93,14 @@ public final class KeyMonitor {
     stateLock.withLock { running }
   }
 
-  /// How many K86 keyboards the HID manager currently sees. Zero means nothing
-  /// will ever be counted — surface it rather than showing an eternal 0.
+  /// True while macOS is protecting keyboard input (a password field is
+  /// focused). Counting pauses; show it rather than looking broken.
+  public var isPausedBySecureInput: Bool {
+    SecureInput.isActive
+  }
+
+  /// How many matching keyboards the HID manager currently sees. Zero means
+  /// nothing will ever be counted — surface it rather than showing an eternal 0.
   public var matchedDeviceCount: Int {
     stateLock.withLock { matchedDevices }
   }
@@ -203,6 +209,10 @@ public final class KeyMonitor {
 
   /// Records one press. Called from the HID callback; keep it allocation-light.
   func record(usage: Int, at date: Date = Date()) {
+    // Belt and braces: macOS already starves observers while secure input is
+    // active, so this rarely fires — but it makes the intent explicit and
+    // covers any path where an event still arrives.
+    guard !SecureInput.isActive else { return }
     let day = Self.dayString(date)
     let hour = Self.calendar.component(.hour, from: date)
     // Minute-of-epoch is compared and discarded — a minute counts as active if

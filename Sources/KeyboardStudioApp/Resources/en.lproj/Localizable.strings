@@ -74,3 +74,7 @@
 /* Effect library */
 "lights.library" = "Effect library";
 "lights.library.hint" = "Hover a tile to see it move; click to send it to the keyboard.";
+
+/* Secure input */
+"stats.secure_input.title" = "Paused — macOS is protecting your input";
+"stats.secure_input.detail" = "A password field is focused. macOS withholds keyboard events from every app, including this one.";

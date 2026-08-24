@@ -40,6 +40,9 @@ final class AppModel {
   /// True when counting is on but no K86 is visible to the HID manager, which
   /// would otherwise look like "counting works, you just never type".
   var keyboardNotDetected = false
+  /// macOS is protecting keyboard input right now (a password field is
+  /// focused), so nothing is being counted.
+  var pausedBySecureInput = false
 
   /// Mirrors today's card onto the keyboard screen while the app runs.
   var screenShowsStats = false {
@@ -273,6 +276,7 @@ final class AppModel {
     do {
       try monitor?.flush()
       keyboardNotDetected = monitoringEnabled && (monitor?.matchedDeviceCount ?? 0) == 0
+      pausedBySecureInput = monitoringEnabled && SecureInput.isActive
 
       let todayKey = KeyMonitor.today()
       let monthStart = String(todayKey.prefix(7)) + "-01"

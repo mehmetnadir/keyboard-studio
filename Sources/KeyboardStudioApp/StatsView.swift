@@ -11,6 +11,8 @@ struct StatsView: View {
           permissionBanner
         } else if model.keyboardNotDetected {
           notDetectedBanner
+        } else if model.pausedBySecureInput {
+          secureInputBanner
         }
         headline
         cards
@@ -65,6 +67,26 @@ struct StatsView: View {
       }
       Spacer()
       Button("stats.stop") { model.stopMonitoring() }
+    }
+    .padding(14)
+    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+  }
+
+  /// Shown while macOS withholds keyboard events — worth surfacing, because a
+  /// counter that silently stops looks broken rather than trustworthy.
+  private var secureInputBanner: some View {
+    HStack(spacing: 12) {
+      Image(systemName: "lock.fill")
+        .font(.title2)
+        .foregroundStyle(.secondary)
+      VStack(alignment: .leading, spacing: 2) {
+        Text("stats.secure_input.title")
+          .font(.headline)
+        Text("stats.secure_input.detail")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Spacer()
     }
     .padding(14)
     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))

@@ -91,6 +91,37 @@ is now a kernel-enforced guarantee. Tier 2 downloads therefore happen in a *sepa
 (`kstudio gallery`), writing into `~/Library/Application Support/KeyboardStudio/Gallery/`; the
 app only reads that directory. `lsof` against the app still returns nothing.
 
+## Keystroke API — decision and open risk (researched 2026-08-24)
+
+**Chosen:** `IOHIDManager` input-value callback, matched to one vendor/product id.
+
+Why not `CGEventTap`, which is the usual choice: it observes every keyboard at
+once and cannot distinguish devices, so the "only your K86 is counted" limit
+would be unenforceable. `NSEvent.addGlobalMonitorForEvents` is worse again —
+for key events it needs Accessibility, which App Sandbox forbids (confirmed by
+Apple DTS).
+
+**Open risk, not yet resolved.** Apple DTS has explicitly confirmed that a
+`.listenOnly` `CGEventTap` works inside App Sandbox. No equivalent confirmation
+exists for `IOHIDManager` + Input Monitoring under sandbox. Tested here: a
+sandboxed bundle and an unsandboxed bundle both fail identically with
+`kIOReturnNotPermitted` while the permission is ungranted, so the two causes
+cannot be told apart until Input Monitoring is granted to a signed build.
+**Action:** grant the permission to the signed app, retest, and if IOHIDManager
+turns out to be blocked by the sandbox, choose between (a) dropping the sandbox
+and keeping per-device counting, or (b) a CGEventTap fallback that counts all
+keyboards, clearly labelled as such. Do not ship the statistics feature as
+"works" until this is settled on a signed build.
+
+Other findings applied: count `keyDown` only (`keyUp` doubles everything);
+never call `CGEventKeyboardGetUnicodeString` / `NSEvent.characters` /
+`UCKeyTranslate`; guard on `IsSecureEventInputEnabled()` and surface it; keep
+the per-key histogram and the hourly buckets in separate, non-joinable tables.
+
+macOS itself exposes no keystroke counts anywhere — Screen Time's `knowledgeC.db`
+records app usage, notifications and pickups only — so this is a genuine gap
+rather than a duplicated system feature.
+
 ## Verification gates
 
 - `swift build` zero errors per commit

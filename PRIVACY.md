@@ -18,11 +18,24 @@ Four aggregate tables, in one SQLite file on your Mac:
 `active_minutes` counts minutes that saw at least one press. Which minutes those
 were is never written down.
 
+## The honest version of the claim
+
+A key code is close to a character: on a US layout, one particular code always
+means "A". So the protection here is not that the app sees something harmless —
+it is that **the app never builds a sequence**.
+
+Counters are incremented independently and stored as a fixed-size histogram.
+There is no row per keystroke, no array, no ring buffer, nothing with an order
+in it. A histogram cannot reconstruct text, because it throws away the order,
+and order is where the meaning lives.
+
+What that still leaks, stated plainly: an aggregate histogram reveals *how* you
+type — letter-frequency patterns could hint at which language you write in, and
+an unusual count on a rare key is visible. It cannot reveal *what* you wrote.
+
 ## What is never stored
 
-- **The order of keystrokes.** Counters are incremented independently, so the
-  stored data cannot reconstruct a word, a sentence, a password, or anything you
-  typed. There is no buffer holding recent keys.
+- **The order of keystrokes.** See above. There is no buffer holding recent keys.
 - **Text, characters, or clipboard contents.** The app records HID usage ids —
   physical key positions. Usage `0x04` is the key labelled "A" on QWERTY and "Q"
   on AZERTY; the app cannot tell which character it produced.
@@ -35,11 +48,13 @@ were is never written down.
 These restrictions come from how the code is built, not from a policy we ask you
 to trust:
 
-1. **One device only.** `KeyMonitor` binds to the K86 by vendor and product id
-   (`0x3151` / `0x4015`) through `IOHIDManagerSetDeviceMatching`. Presses on
-   your built-in keyboard or any other keyboard never reach this process.
-   `CGEventTap` — the API that sees everything — is deliberately not used, and
-   the app would not work if it were, because it cannot tell devices apart.
+1. **One device only.** `KeyMonitor` binds to a single keyboard by vendor and
+   product id (taken from its device profile) through
+   `IOHIDManagerSetDeviceMatching`. Presses on your built-in keyboard, or any
+   keyboard other than the one being tracked, never reach this process.
+   `CGEventTap` — the API most keystroke tools use — is deliberately not used:
+   it sees every keyboard at once and cannot tell devices apart, so it could
+   not honour this limit even in principle.
 2. **Keyboard usages only.** Only HID usage page `0x07` (Keyboard/Keypad) values
    are counted. Consumer keys, the knob and pointer usages are discarded.
 3. **No network — enforced by the kernel.** The app runs in the App Sandbox and
@@ -51,6 +66,12 @@ to trust:
    permissions. Nothing copies it anywhere.
 5. **`first_seen` is a date, not a timestamp.** The only time-like value stored
    anywhere is the day you first used the app.
+6. **Password fields are protected by macOS, not by us.** When any app enables
+   secure event input — AppKit password fields, Safari, Chrome and Firefox all
+   do — the system stops delivering keyboard events to every observer on the
+   machine. We do not *choose* to skip your password; macOS refuses to hand it
+   over. The app also checks the flag itself and shows "Paused — macOS is
+   protecting your input", so you can watch it happen.
 
 ## Verify it yourself
 
@@ -66,6 +87,9 @@ lsof -i -a -p $(pgrep -f 'Keyboard Studio')     # expect no output
 
 # Confirm the source contains no networking at all (expect no matches):
 grep -rn 'URLSession\|Network\.\|CFSocket' Sources/
+
+# Confirm characters are never resolved from a key press (expect no matches):
+grep -rn 'UnicodeString\|UCKeyTranslate\|NSEvent' Sources/StatsCore/
 
 # Read the one file that touches keyboard input (~250 lines):
 Sources/StatsCore/KeyMonitor.swift

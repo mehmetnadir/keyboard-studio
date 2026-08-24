@@ -74,3 +74,7 @@
 /* Efekt kütüphanesi */
 "lights.library" = "Efekt kütüphanesi";
 "lights.library.hint" = "Hareketini görmek için üzerine gel, klavyeye göndermek için tıkla.";
+
+/* Güvenli giriş */
+"stats.secure_input.title" = "Duraklatıldı — macOS girişini koruyor";
+"stats.secure_input.detail" = "Bir parola alanı etkin. macOS tuş olaylarını bu uygulama dahil hiçbir uygulamaya vermiyor.";
