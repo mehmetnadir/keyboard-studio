@@ -44,6 +44,11 @@ final class AppModel {
   /// focused), so nothing is being counted.
   var pausedBySecureInput = false
 
+  // Knob
+  var knobSlots: Knob.SlotMap?
+  var knobBindings: [Knob.Action: Knob.Binding] = [:]
+  var knobError: String?
+
   /// Mirrors today's card onto the keyboard screen while the app runs.
   var screenShowsStats = false {
     didSet { screenShowsStats ? startScreenMirror() : stopScreenMirror() }
@@ -149,6 +154,8 @@ final class AppModel {
     if profile?.id != connected?.id {
       profile = connected
       layout = connected?.layout.flatMap(KeyboardLayout.load(named:))
+      knobSlots = nil
+      knobBindings = [:]
     }
     guard isConnected else {
       firmware = nil
@@ -172,6 +179,38 @@ final class AppModel {
       deviceError = String(describing: error)
       isConnected = false
     }
+  }
+
+  // MARK: - Knob
+
+  /// Finds the knob's slots on the connected board and reads its bindings.
+  ///
+  /// Slot positions are discovered rather than assumed — they differ between
+  /// models that share this protocol.
+  func loadKnob() {
+    guard isConnected, knobSlots == nil else { return }
+    withDevice { keyboard in
+      guard try keyboard.verifyIdentity() else {
+        knobError = "knob.identity_mismatch".localized
+        return
+      }
+      guard let slots = try Keymap.discoverKnobSlots(on: keyboard) else {
+        knobError = nil
+        return
+      }
+      knobSlots = slots
+      knobBindings = try Keymap.readKnob(slots, on: keyboard)
+      knobError = nil
+    }
+  }
+
+  /// Changing a binding is not wired to the device yet: the keymap *write*
+  /// command has not been confirmed on hardware, and writing a wrong slot
+  /// remaps a real key. The picker updates what is shown; applying it comes
+  /// once the write path is verified.
+  func setKnob(action: Knob.Action, mediaCode: Int?) {
+    knobBindings[action] = mediaCode.map { Knob.Binding.media(code: $0) } ?? .unassigned
+    knobError = "knob.write_pending".localized
   }
 
   // MARK: - Lighting actions

@@ -99,3 +99,18 @@
 "settings.about.version" = "Sürüm";
 "settings.about.source" = "GitHub'da kaynak kod";
 "settings.about.privacy" = "MIT lisanslı. Ağ erişimi yok, telemetri yok. Attack Shark veya ROYUAN ile bağlantılı değildir.";
+
+/* Knob (döner düğme) */
+"tab.knob" = "Düğme";
+"knob.title" = "Döner düğme";
+"knob.subtitle" = "Sağ üst köşedeki döner düğme — üç eylemi var.";
+"knob.turn_left" = "Sola çevir";
+"knob.turn_right" = "Sağa çevir";
+"knob.press" = "Bas";
+"knob.unassigned" = "Atanmamış";
+"knob.absent" = "Bu klavyede döner düğme yok.";
+"knob.searching" = "Düğmenin mevcut atamaları okunuyor…";
+"knob.storage" = "Atamalar klavyenin kendi hafızasında tutulur; kabloyu çıkarsan da kalır, bu uygulama kapalıyken de çalışır.";
+"knob.slots_detail" = "Keymap sayfası %lld içinde bulundu.";
+"knob.identity_mismatch" = "Bağlı klavye bu profille eşleşmiyor — keymap'ine dokunulmuyor.";
+"knob.write_pending" = "Şimdilik yalnızca gösteriliyor: atamaların klavyeye yazılması henüz açık değil — keymap yazma komutu donanımda doğrulanmadı ve yanlış slot gerçek bir tuşu değiştirir.";

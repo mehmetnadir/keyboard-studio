@@ -9,7 +9,7 @@ import Foundation
 /// Index mapping caveat: the Python reference reads feature reports through
 /// hidapi, which prepends a report-id byte — its `r[i]` equals the raw device
 /// byte `f[i-1]` used throughout this port.
-enum Proto {
+public enum Proto {
   static let vid = 0x3151
   static let pid = 0x4015
   static let vendorUsagePage = 0xFFFF
@@ -19,6 +19,10 @@ enum Proto {
   static let opGetRev: UInt8 = 0x80
   /// Whoami: replies with a little-endian u32 model id in bytes 1..4.
   static let opGetDeviceID: UInt8 = 0x8F
+  /// Keymap read. Slots are 4 bytes; byte 0 is the action type.
+  public static let opGetKeymap: UInt8 = 0x89
+  /// Keymap write — NOT used yet. Writing the wrong slot remaps the wrong key.
+  static let opSetKeymap: UInt8 = 0x09
   static let opGetKBOption: UInt8 = 0x86
   static let opSetKBOption: UInt8 = 0x06
   static let opSetLEDParam: UInt8 = 0x07

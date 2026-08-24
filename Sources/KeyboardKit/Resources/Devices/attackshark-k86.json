@@ -20,6 +20,13 @@
       "pixelFormat": "rgb565",
       "maxFrames": 30,
       "verified": false
+    },
+    "knobSlots": {
+      "page": 6,
+      "turnLeft": 0,
+      "turnRight": 1,
+      "press": 2,
+      "discovered": true
     }
   }
 }

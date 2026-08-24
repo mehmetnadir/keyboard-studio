@@ -58,3 +58,12 @@ extension String {
     String(format: localized, arguments: arguments)
   }
 }
+
+import StatsCore
+
+/// Thin alias so views can label HID usages without importing StatsCore.
+enum StatsKeyNames {
+  static func name(for usage: Int) -> String {
+    KeyNames.name(for: usage)
+  }
+}

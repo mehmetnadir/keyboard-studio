@@ -1,5 +1,10 @@
 import Foundation
 
+/// Which checksum variant a probe should use.
+public enum ChecksumModeSelector: Sendable {
+  case bit7, bit8
+}
+
 /// A connected keyboard, opened through its vendor control interface.
 ///
 /// The profile decides which USB ids to look for, what the panel's geometry is
@@ -84,6 +89,12 @@ public final class Keyboard {
   /// what a given firmware reports; callers interpret the bytes themselves.
   public func probe(opcode: UInt8) throws -> [UInt8] {
     try query([opcode])
+  }
+
+  /// Sends an arbitrary read command and returns the raw reply, for protocol
+  /// exploration. Read-only by convention — callers must not pass write opcodes.
+  public func probeRaw(_ cmd: [UInt8], mode: ChecksumModeSelector = .bit7) throws -> [UInt8] {
+    try query(cmd, mode: mode == .bit7 ? .bit7 : .bit8)
   }
 
   /// Asks whether the panel would accept a frame of this size, without sending

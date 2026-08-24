@@ -99,3 +99,18 @@
 "settings.about.version" = "Version";
 "settings.about.source" = "Source code on GitHub";
 "settings.about.privacy" = "MIT licensed. No network access, no telemetry. Not affiliated with Attack Shark or ROYUAN.";
+
+/* Knob */
+"tab.knob" = "Knob";
+"knob.title" = "Knob";
+"knob.subtitle" = "The rotary encoder in the top-right corner — three actions.";
+"knob.turn_left" = "Turn left";
+"knob.turn_right" = "Turn right";
+"knob.press" = "Press";
+"knob.unassigned" = "Nothing";
+"knob.absent" = "This keyboard has no knob.";
+"knob.searching" = "Reading the knob's current assignments…";
+"knob.storage" = "Assignments live in the keyboard's own keymap, so they survive unplugging and work without this app.";
+"knob.slots_detail" = "Found on keymap page %lld.";
+"knob.identity_mismatch" = "The connected keyboard does not match this profile — not touching its keymap.";
+"knob.write_pending" = "Shown only: writing knob assignments to the keyboard is not enabled yet — the keymap write command still needs verifying on hardware, and a wrong slot would remap a real key.";

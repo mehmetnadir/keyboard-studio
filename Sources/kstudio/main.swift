@@ -53,6 +53,7 @@ func usage() -> Never {
       kstudio effects                       list effect names
       kstudio probe                         ask the device about itself (read-only)
       kstudio measure                       find the panel's real resolution
+      kstudio keymap                        read the keymap layout (read-only)
       kstudio stats                         typing statistics summary
       kstudio watch [seconds]               count presses live (needs Input Monitoring)
       kstudio card <out.png> [--demo]       preview the keyboard screen card as PNG
@@ -91,6 +92,9 @@ do {
 
   case "measure":
     try MeasureCommand.run(args)
+
+  case "keymap":
+    try KeymapCommand.run(args)
 
   case "info":
     let kb = try Keyboard()
