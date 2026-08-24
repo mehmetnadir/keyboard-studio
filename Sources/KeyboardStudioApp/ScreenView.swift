@@ -57,6 +57,13 @@ struct ScreenView: View {
             ? "screen.now_playing.detail" : "screen.show_stats.detail")
           .font(.caption)
           .foregroundStyle(.tertiary)
+        if model.screenMode == .nowPlaying {
+          Toggle("screen.light_follows_music", isOn: $model.lightFollowsMusic)
+            .padding(.top, 2)
+          Text("screen.light_follows_music.detail")
+            .font(.caption)
+            .foregroundStyle(.tertiary)
+        }
         if let screenStatus = model.screenStatus {
           Text(screenStatus)
             .font(.caption)

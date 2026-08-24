@@ -61,9 +61,39 @@ public enum PlayerBridge {
 
   // MARK: - YouTube Music
 
-  /// Reads the tab title, which YouTube Music formats as "Title - Artist".
-  /// A paused tab drops the leading marker, so we can tell playing from not.
+  /// YouTube Music has no scripting interface, so its track comes from a
+  /// window or tab title. The standalone desktop app is checked first — if it
+  /// is running, that is where the music is.
   private static func readYouTubeMusic() -> NowPlaying? {
+    if let fromApp = readYouTubeMusicApp() { return fromApp }
+    return readYouTubeMusicTab()
+  }
+
+  /// th-ch/youtube-music and similar wrappers put the track in the window
+  /// title. Reading it goes through System Events, which macOS gates behind a
+  /// permission prompt the first time.
+  private static func readYouTubeMusicApp() -> NowPlaying? {
+    let running = NSWorkspace.shared.runningApplications
+    let names = ["YouTube Music", "YouTube Music Desktop App", "th-ch YouTube Music"]
+    guard let app = running.first(where: {
+      guard let bundle = $0.bundleIdentifier else { return false }
+      return bundle.contains("youtube-music") || bundle.contains("youtubemusic")
+    }) ?? running.first(where: { names.contains($0.localizedName ?? "") }) else { return nil }
+
+    guard let processName = app.localizedName else { return nil }
+    let script = """
+      tell application "System Events"
+        tell process "\(processName)"
+          if (count of windows) > 0 then return name of front window
+        end tell
+      end tell
+      return ""
+      """
+    guard let title = runAppleScript(script), !title.isEmpty else { return nil }
+    return parseYouTubeTitle(title)
+  }
+
+  private static func readYouTubeMusicTab() -> NowPlaying? {
     let browsers = [
       ("Google Chrome", "com.google.Chrome"), ("Brave Browser", "com.brave.Browser"),
       ("Arc", "company.thebrowser.Browser"), ("Microsoft Edge", "com.microsoft.edgemac"),
@@ -99,18 +129,36 @@ public enum PlayerBridge {
     return nil
   }
 
-  /// "Song - Artist - YouTube Music", sometimes prefixed with a play marker
-  /// and a notification count like "(2)".
+  /// Titles come in two shapes and both appear in the wild:
+  ///   browser tab:  "Song - Artist - YouTube Music"
+  ///   desktop app:  "Song | Official Music Video | Artist | YouTube Music"
+  /// The app form is pipe-separated with descriptive middle segments, so the
+  /// artist is the last segment before the trailing "YouTube Music".
   static func parseYouTubeTitle(_ raw: String) -> NowPlaying? {
-    var text = raw
-    for suffix in [" - YouTube Music", " – YouTube Music"] where text.hasSuffix(suffix) {
-      text = String(text.dropLast(suffix.count))
-    }
+    var text = raw.trimmingCharacters(in: .whitespaces)
     // Strip a leading "(3) " unread badge.
     if text.hasPrefix("("), let close = text.firstIndex(of: ")") {
       text = String(text[text.index(after: close)...]).trimmingCharacters(in: .whitespaces)
     }
-    guard !text.isEmpty, text != "YouTube Music" else { return nil }
+
+    if text.contains("|") {
+      var parts = text.components(separatedBy: "|")
+        .map { $0.trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty }
+      if parts.last?.caseInsensitiveCompare("YouTube Music") == .orderedSame {
+        parts.removeLast()
+      }
+      guard let title = parts.first, !title.isEmpty else { return nil }
+      let artist = parts.count > 1 ? parts[parts.count - 1] : ""
+      return NowPlaying(title: title, artist: artist, source: .youtubeMusic)
+    }
+
+    for suffix in [" - YouTube Music", " – YouTube Music"] where text.hasSuffix(suffix) {
+      text = String(text.dropLast(suffix.count))
+    }
+    guard !text.isEmpty, text.caseInsensitiveCompare("YouTube Music") != .orderedSame else {
+      return nil
+    }
 
     let parts = text.components(separatedBy: " - ")
     if parts.count >= 2 {

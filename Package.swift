@@ -25,5 +25,6 @@ let package = Package(
     .testTarget(name: "KeyboardKitTests", dependencies: ["KeyboardKit"]),
     .testTarget(name: "StatsCoreTests", dependencies: ["StatsCore"]),
     .testTarget(name: "StatsScreenTests", dependencies: ["StatsScreen"]),
+    .testTarget(name: "NowPlayingTests", dependencies: ["NowPlaying"]),
   ]
 )

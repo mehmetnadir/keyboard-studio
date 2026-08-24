@@ -70,6 +70,12 @@ final class AppModel {
   }
   var screenStatus: String?
   var nowPlaying: NowPlaying?
+  /// Tie the lighting to the track as well as the screen.
+  var lightFollowsMusic = false {
+    didSet {
+      if lightFollowsMusic { Task { await syncLightToMusic() } }
+    }
+  }
 
   enum ScreenMode: String, CaseIterable, Identifiable {
     case off, stats, nowPlaying
@@ -387,6 +393,29 @@ final class AppModel {
     case .stats: await pushStatsToScreen()
     case .nowPlaying: await pushNowPlayingToScreen()
     }
+    if lightFollowsMusic { await syncLightToMusic() }
+  }
+
+  /// Gives the keyboard the track's colour.
+  ///
+  /// Updated at most every couple of seconds: lighting commands are
+  /// rate-limited by the firmware, and pushing them faster wedges the control
+  /// endpoint until the keyboard is re-plugged. A beat-synced strobe is not
+  /// something this hardware can do.
+  private var lastLightSync = Date.distantPast
+
+  func syncLightToMusic() async {
+    guard lightFollowsMusic, isConnected else { return }
+    guard Date().timeIntervalSince(lastLightSync) >= MusicLight.updateInterval else { return }
+    let playing = nowPlaying ?? PlayerBridge.current()
+    guard let playing else { return }
+
+    lastLightSync = Date()
+    let color = MusicLight.color(
+      for: playing, drift: MusicLight.drift(progress: playing.progress))
+    mainColor = Color3(Int(color.r), Int(color.g), Int(color.b))
+    effect = .solid
+    applyMainLight()
   }
 
   /// Only uploads when the track actually changed — the panel write takes about

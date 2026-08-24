@@ -1,5 +1,6 @@
 import Foundation
 import KeyboardKit
+import NowPlaying
 import StatsCore
 import Testing
 
@@ -51,5 +52,31 @@ import Testing
     #expect(window.last == 5)  // 24th
     #expect(window[4] == 3)  // 22nd
     #expect(window[5] == 0)  // 23rd has no data
+  }
+}
+
+@Suite struct MusicLightTests {
+  @Test func sameTrackAlwaysGetsTheSameColour() {
+    let track = NowPlaying(title: "Song", artist: "Artist", source: .spotify)
+    #expect(MusicLight.color(for: track) == MusicLight.color(for: track))
+  }
+
+  @Test func differentTracksGetDifferentColours() {
+    let a = NowPlaying(title: "One", artist: "Artist", source: .spotify)
+    let b = NowPlaying(title: "Two", artist: "Artist", source: .spotify)
+    #expect(MusicLight.color(for: a) != MusicLight.color(for: b))
+  }
+
+  @Test func driftStaysWithinASixthOfTheWheel() {
+    #expect(MusicLight.drift(progress: 0) == 0)
+    #expect(MusicLight.drift(progress: 1) <= 0.17)
+    #expect(MusicLight.drift(progress: nil) == 0)
+  }
+
+  @Test func hueAlwaysInRange() {
+    for text in ["", "a", "a very long track title indeed", "Ünlü Şarkı"] {
+      let value = MusicLight.hue(for: text)
+      #expect(value >= 0 && value < 1)
+    }
   }
 }

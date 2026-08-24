@@ -151,3 +151,5 @@
 "screen.mode.now_playing" = "Now playing";
 "screen.now_playing.detail" = "Shows the track from Apple Music, Spotify or YouTube Music, updating when it changes. Read locally from the running player — nothing is fetched from the internet.";
 "screen.nothing_playing" = "Nothing playing right now.";
+"screen.light_follows_music" = "Match the lighting to the track";
+"screen.light_follows_music.detail" = "Each track gets its own colour, drifting slowly as it plays. Not a beat-synced visualiser: the keyboard's firmware rate-limits lighting commands, and pushing them faster stops it responding until it is re-plugged.";

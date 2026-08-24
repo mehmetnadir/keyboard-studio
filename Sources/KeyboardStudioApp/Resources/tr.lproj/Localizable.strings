@@ -151,3 +151,5 @@
 "screen.mode.now_playing" = "Çalan şarkı";
 "screen.now_playing.detail" = "Apple Music, Spotify veya YouTube Music'te çalan parçayı gösterir, şarkı değişince günceller. Çalışan uygulamadan yerel olarak okunur — internetten hiçbir şey çekilmez.";
 "screen.nothing_playing" = "Şu an bir şey çalmıyor.";
+"screen.light_follows_music" = "Işığı çalan parçaya uydur";
+"screen.light_follows_music.detail" = "Her parçanın kendi rengi olur ve çaldıkça yavaşça kayar. Ritme senkron bir görselleştirici değil: klavyenin yazılımı ışık komutlarını hız sınırına tabi tutuyor, daha hızlı göndermek klavyeyi kabloyu çıkarıp takana kadar yanıt veremez hale getiriyor.";
