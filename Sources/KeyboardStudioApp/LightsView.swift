@@ -1,4 +1,4 @@
-import K86Kit
+import KeyboardKit
 import SwiftUI
 
 struct LightsView: View {

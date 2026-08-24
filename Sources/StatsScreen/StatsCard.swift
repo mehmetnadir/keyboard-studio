@@ -1,7 +1,7 @@
 import CoreGraphics
 import CoreText
 import Foundation
-import K86Kit
+import KeyboardKit
 import StatsCore
 
 /// Renders typing statistics as a 128×128 frame for the keyboard's own screen.

@@ -6,20 +6,20 @@ let package = Package(
   defaultLocalization: "en",
   platforms: [.macOS(.v14)],
   products: [
-    .library(name: "K86Kit", targets: ["K86Kit"]),
+    .library(name: "KeyboardKit", targets: ["KeyboardKit"]),
     .library(name: "StatsCore", targets: ["StatsCore"]),
     .executable(name: "kstudio", targets: ["kstudio"]),
     .executable(name: "KeyboardStudioApp", targets: ["KeyboardStudioApp"]),
   ],
   targets: [
-    .target(name: "K86Kit"),
+    .target(name: "KeyboardKit", resources: [.copy("Resources/Devices"), .copy("Resources/Layouts")]),
     .target(name: "StatsCore"),
-    .target(name: "StatsScreen", dependencies: ["K86Kit", "StatsCore"]),
-    .executableTarget(name: "kstudio", dependencies: ["K86Kit", "StatsCore", "StatsScreen"]),
+    .target(name: "StatsScreen", dependencies: ["KeyboardKit", "StatsCore"]),
+    .executableTarget(name: "kstudio", dependencies: ["KeyboardKit", "StatsCore", "StatsScreen"]),
     .executableTarget(
-      name: "KeyboardStudioApp", dependencies: ["K86Kit", "StatsCore", "StatsScreen"],
+      name: "KeyboardStudioApp", dependencies: ["KeyboardKit", "StatsCore", "StatsScreen"],
       resources: [.process("Resources")]),
-    .testTarget(name: "K86KitTests", dependencies: ["K86Kit"]),
+    .testTarget(name: "KeyboardKitTests", dependencies: ["KeyboardKit"]),
     .testTarget(name: "StatsCoreTests", dependencies: ["StatsCore"]),
     .testTarget(name: "StatsScreenTests", dependencies: ["StatsScreen"]),
   ]

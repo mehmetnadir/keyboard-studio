@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 import ImageIO
-import K86Kit
+import KeyboardKit
 import StatsCore
 import StatsScreen
 import UniformTypeIdentifiers

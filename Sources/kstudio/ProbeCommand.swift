@@ -1,5 +1,5 @@
 import Foundation
-import K86Kit
+import KeyboardKit
 
 /// `kstudio probe` — asks the keyboard about itself instead of trusting
 /// documentation. Read-only queries plus screen-geometry handshakes.
@@ -8,7 +8,7 @@ import K86Kit
 /// no pixel data follows, so the panel keeps whatever it is showing.
 enum ProbeCommand {
   static func run() throws {
-    let kb = try K86()
+    let kb = try Keyboard()
     defer { kb.close() }
 
     print("Device queries (read-only opcodes 0x80–0x8F)")

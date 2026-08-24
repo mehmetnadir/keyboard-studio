@@ -1,5 +1,5 @@
 import Foundation
-import K86Kit
+import KeyboardKit
 import SwiftUI
 
 /// Approximates what each firmware effect looks like, so the gallery can show

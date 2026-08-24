@@ -40,18 +40,29 @@ public enum ContentMode: String, Sendable, CaseIterable {
 /// handshake, then the pixel stream in 56-byte chunks.
 ///
 /// Panel facts worth knowing before preparing artwork:
-/// - 128 × 128 pixels, square, RGB565 (65 536 colours — fine gradients band).
+/// - Geometry comes from the device profile, never from a constant here: the
+///   firmware answers "ready" to a handshake for any frame size, so a panel's
+///   real resolution has to be recorded per model and confirmed by eye.
+/// - RGB565, 65 536 colours — fine gradients band.
 /// - Animations: up to `maxFrames` frames per upload; the firmware indexes
 ///   frames in a single byte, so 255 is the hard ceiling.
 /// - Frame delay comes from the GIF itself, quantised to 10 ms units and
 ///   clamped to 10 ms … 2.55 s.
 public enum Screen {
+  /// Fallback geometry for callers with no profile at hand (previews, tests).
+  /// Real uploads take the size from `Keyboard.screen`.
   public static let width = 128
   public static let height = 128
   /// Default animation frame budget. Higher values upload slowly (each frame
   /// is 32 KB of pixel data sent in 56-byte chunks) and can exhaust device
   /// memory; 255 is the protocol maximum.
   public static let maxFrames = 30
+
+  /// Geometry for a connected keyboard, falling back to the defaults above.
+  public static func geometry(for keyboard: Keyboard) -> (width: Int, height: Int, maxFrames: Int) {
+    guard let screen = keyboard.screen else { return (width, height, maxFrames) }
+    return (screen.width, screen.height, screen.maxFrames)
+  }
 
   static let opCanWrite: UInt8 = 165  // FEA_CMD_GETTFTLCDDATA (RGB565 mode)
   static let opData: UInt8 = 37       // FEA_CMD_SETTFTLCDDATA
@@ -64,7 +75,7 @@ public enum Screen {
   /// The protocol's target rectangle is what makes panel measurement possible:
   /// drawing a known-good tile at increasing offsets shows where the panel ends.
   public static func writeImage(
-    _ frame: ScreenFrame, at origin: (x: Int, y: Int) = (0, 0), layer: UInt8 = 0, on kb: K86
+    _ frame: ScreenFrame, at origin: (x: Int, y: Int) = (0, 0), layer: UInt8 = 0, on kb: Keyboard
   ) throws {
     try validate(frame)
     let bytes = encode565(frame.rgb, width: frame.width, height: frame.height)
@@ -72,7 +83,7 @@ public enum Screen {
       kb, byteLength: bytes.count, frameIndex: layer, allFrames: 1, delay: 0, layer: layer,
       left: origin.x, top: origin.y,
       right: origin.x + frame.width, bottom: origin.y + frame.height)
-    else { throw K86Error.screenHandshakeFailed }
+    else { throw DeviceError.screenHandshakeFailed }
     try sendChunks(kb, bytes, frameIndex: layer, allFrames: 1, delay: 0)
   }
 
@@ -89,9 +100,9 @@ public enum Screen {
     return ScreenFrame(rgb: rgb, width: width, height: height)
   }
 
-  public static func writeAnimation(_ frames: [ScreenFrame], on kb: K86) throws {
+  public static func writeAnimation(_ frames: [ScreenFrame], on kb: Keyboard) throws {
     guard (1...255).contains(frames.count) else {
-      throw K86Error.invalidFrame("animation needs 1...255 frames, got \(frames.count)")
+      throw DeviceError.invalidFrame("animation needs 1...255 frames, got \(frames.count)")
     }
     for frame in frames { try validate(frame) }
     let first = frames[0]
@@ -99,7 +110,7 @@ public enum Screen {
     guard try canWrite(
       kb, byteLength: firstBytes.count, frameIndex: 0,
       allFrames: UInt8(frames.count), delay: first.delayByte, layer: 0)
-    else { throw K86Error.screenHandshakeFailed }
+    else { throw DeviceError.screenHandshakeFailed }
     for (index, frame) in frames.enumerated() {
       try sendChunks(
         kb, encode565(frame.rgb), frameIndex: UInt8(index),
@@ -110,7 +121,7 @@ public enum Screen {
   private static func validate(_ frame: ScreenFrame) throws {
     let expected = frame.width * frame.height * 3
     guard frame.rgb.count == expected else {
-      throw K86Error.invalidFrame(
+      throw DeviceError.invalidFrame(
         "expected \(frame.width)×\(frame.height) RGB (\(expected) bytes), got \(frame.rgb.count)")
     }
   }
@@ -119,7 +130,7 @@ public enum Screen {
 
   /// Runs only the write handshake for a frame of the given size. No pixel data
   /// follows, so the panel keeps its current contents.
-  static func handshakeAccepts(width: Int, height: Int, on kb: K86) -> Bool {
+  static func handshakeAccepts(width: Int, height: Int, on kb: Keyboard) -> Bool {
     let byteLength = width * height * 2  // RGB565
     return (try? canWrite(
       kb, byteLength: byteLength, frameIndex: 0, allFrames: 1, delay: 0, layer: 0,
@@ -129,7 +140,7 @@ public enum Screen {
   // MARK: - Protocol
 
   private static func canWrite(
-    _ kb: K86, byteLength: Int, frameIndex: UInt8, allFrames: UInt8,
+    _ kb: Keyboard, byteLength: Int, frameIndex: UInt8, allFrames: UInt8,
     delay: UInt8, layer: UInt8, left: Int = 0, top: Int = 0,
     right: Int = Screen.width, bottom: Int = Screen.height, retries: Int = 10
   ) throws -> Bool {
@@ -165,7 +176,7 @@ public enum Screen {
   }
 
   private static func sendChunks(
-    _ kb: K86, _ bytes: [UInt8], frameIndex: UInt8, allFrames: UInt8, delay: UInt8
+    _ kb: Keyboard, _ bytes: [UInt8], frameIndex: UInt8, allFrames: UInt8, delay: UInt8
   ) throws {
     let total = (bytes.count + chunkSize - 1) / chunkSize
     for chunk in 0..<total {
@@ -211,8 +222,19 @@ public enum Screen {
 
   // MARK: - Image loading (ImageIO — animated GIF supported)
 
+  /// Decodes an image or GIF, scaled to the panel `keyboard` actually has.
   public static func loadFrames(
-    url: URL, mode: ContentMode = .fill, maxFrames: Int = Screen.maxFrames
+    url: URL, for keyboard: Keyboard, mode: ContentMode = .fill
+  ) throws -> [ScreenFrame] {
+    let panel = geometry(for: keyboard)
+    return try loadFrames(
+      url: url, mode: mode, maxFrames: panel.maxFrames,
+      width: panel.width, height: panel.height)
+  }
+
+  public static func loadFrames(
+    url: URL, mode: ContentMode = .fill, maxFrames: Int = Screen.maxFrames,
+    width: Int = Screen.width, height: Int = Screen.height
   ) throws -> [ScreenFrame] {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
       CGImageSourceGetCount(source) > 0
@@ -223,25 +245,30 @@ public enum Screen {
     var frames: [ScreenFrame] = []
     for index in 0..<count {
       guard let image = CGImageSourceCreateImageAtIndex(source, index, nil) else {
-        throw K86Error.imageDecodeFailed
+        throw DeviceError.imageDecodeFailed
       }
       frames.append(
-        ScreenFrame(rgb: try rasterize(image, mode: mode), delayByte: delayByte(source, index)))
+        ScreenFrame(
+          rgb: try rasterize(image, mode: mode, width: width, height: height),
+          width: width, height: height, delayByte: delayByte(source, index)))
     }
     return frames
   }
 
-  private static func rasterize(_ image: CGImage, mode: ContentMode) throws -> [UInt8] {
+  private static func rasterize(
+    _ image: CGImage, mode: ContentMode, width: Int = Screen.width, height: Int = Screen.height
+  ) throws -> [UInt8] {
     guard let context = CGContext(
       data: nil, width: width, height: height, bitsPerComponent: 8,
       bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
       bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
-    else { throw K86Error.imageDecodeFailed }
+    else { throw DeviceError.imageDecodeFailed }
     context.interpolationQuality = .high
     context.setFillColor(gray: 0, alpha: 1)
     context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-    context.draw(image, in: destinationRect(for: image, mode: mode))
-    guard let base = context.data else { throw K86Error.imageDecodeFailed }
+    context.draw(
+      image, in: destinationRect(for: image, mode: mode, width: width, height: height))
+    guard let base = context.data else { throw DeviceError.imageDecodeFailed }
     let rgba = base.assumingMemoryBound(to: UInt8.self)
     var rgb = [UInt8](repeating: 0, count: width * height * 3)
     for pixel in 0..<(width * height) {
@@ -255,7 +282,10 @@ public enum Screen {
   /// Where to draw the source so the panel is filled, fitted or stretched.
   /// Returned in the panel's coordinate space; may extend past the edges for
   /// `.fill`, which is what produces the centre crop.
-  static func destinationRect(for image: CGImage, mode: ContentMode) -> CGRect {
+  static func destinationRect(
+    for image: CGImage, mode: ContentMode, width: Int = Screen.width,
+    height: Int = Screen.height
+  ) -> CGRect {
     let panel = CGRect(x: 0, y: 0, width: width, height: height)
     let sourceWidth = CGFloat(image.width)
     let sourceHeight = CGFloat(image.height)

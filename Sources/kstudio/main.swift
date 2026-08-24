@@ -1,5 +1,5 @@
 import Foundation
-import K86Kit
+import KeyboardKit
 import StatsCore
 import StatsScreen
 
@@ -39,7 +39,7 @@ func intOption(_ name: String, _ args: [String], default value: Int, range: Clos
 func usage() -> Never {
   errPrint(
     """
-    kstudio — Attack Shark K86 control (Keyboard Studio CLI)
+    kstudio — Keyboard Studio CLI (Attack Shark K86 and other ROYUAN boards)
 
     USAGE:
       kstudio info                          firmware + connection status
@@ -93,17 +93,17 @@ do {
     try MeasureCommand.run(args)
 
   case "info":
-    let kb = try K86()
+    let kb = try Keyboard()
     defer { kb.close() }
     if let version = try kb.firmwareVersion() {
-      print("K86: connected — firmware \(String(format: "0x%04x", version))")
+      print("\(kb.profile.displayName) — firmware \(String(format: "0x%04x", version))")
     } else {
-      print("K86: connected — firmware query returned no data")
+      print("Connected — firmware query returned no data")
     }
 
   case "leds":
     guard args.count > 1, ["on", "off"].contains(args[1]) else { usage() }
-    let kb = try K86()
+    let kb = try Keyboard()
     defer { kb.close() }
     try kb.setLEDs(on: args[1] == "on")
     print("LEDs \(args[1])")
@@ -116,7 +116,7 @@ do {
     if option("--color", args) != nil {
       fail("--color only applies to `effect`; pass the color directly to \(command)")
     }
-    let kb = try K86()
+    let kb = try Keyboard()
     defer { kb.close() }
     try kb.setLEDs(on: true)
     let brightness = intOption("--bright", args, default: 4, range: 0...4)
@@ -138,7 +138,7 @@ do {
       guard let parsed = parseColor(raw) else { fail("unknown color: \(raw)") }
       fixed = parsed
     }
-    let kb = try K86()
+    let kb = try Keyboard()
     defer { kb.close() }
     try kb.setLEDs(on: true)
     try kb.setMainEffect(
@@ -149,15 +149,16 @@ do {
 
   case "screen":
     guard args.count > 1 else { usage() }
-    let kb = try K86()
+    let kb = try Keyboard()
     defer { kb.close() }
     if args[1] == "--test" {
       try Screen.writeImage(Screen.testPattern(), on: kb)
       print("Test pattern uploaded.")
     } else if args[1] == "--ruler" || args[1] == "--bands" {
       // Optional WxH so the real panel size can be discovered by trying sizes.
-      var frameWidth = Screen.width
-      var frameHeight = Screen.height
+      let panel = Screen.geometry(for: kb)
+      var frameWidth = panel.width
+      var frameHeight = panel.height
       if let size = option("--size", args) {
         let parts = size.lowercased().split(separator: "x").compactMap { Int($0) }
         guard parts.count == 2, parts.allSatisfy({ (8...512).contains($0) }) else {
@@ -196,7 +197,8 @@ do {
     } else {
       let mode: ContentMode =
         args.contains("--fit") ? .fit : (args.contains("--stretch") ? .stretch : .fill)
-      let frames = try Screen.loadFrames(url: URL(fileURLWithPath: args[1]), mode: mode)
+      let frames = try Screen.loadFrames(
+        url: URL(fileURLWithPath: args[1]), for: kb, mode: mode)
       if frames.count == 1 {
         try Screen.writeImage(frames[0], on: kb)
         print("Image uploaded.")

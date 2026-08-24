@@ -109,9 +109,9 @@ enum StatsCommands {
     }
 
     if monitor.matchedDeviceCount == 0 {
-      errPrint("warning: no K86 detected — nothing will be counted until it is connected.")
+      errPrint("warning: no supported keyboard detected — nothing will be counted until one is connected.")
     }
-    print("Counting K86 key presses for \(Int(seconds))s (only this keyboard, counts only)…")
+    print("Counting key presses for \(Int(seconds))s (only this keyboard, counts only)…")
 
     // Ctrl-C must still persist what was counted so far.
     signal(SIGINT, SIG_IGN)

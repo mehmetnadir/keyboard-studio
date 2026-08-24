@@ -1,5 +1,5 @@
 import Foundation
-import K86Kit
+import KeyboardKit
 import Observation
 import StatsCore
 import StatsScreen
@@ -14,6 +14,10 @@ final class AppModel {
   var firmware: String?
   var deviceError: String?
   var isUploading = false
+  /// Which keyboard model is attached, and how it is drawn. Both come from the
+  /// device catalogue, so a new board needs no code here.
+  var profile: DeviceProfile?
+  var layout: KeyboardLayout?
 
   // Lighting (mirrors what the user last applied; the keyboard has no read-back
   // for the active colour, so this is intent, not device truth)
@@ -107,7 +111,12 @@ final class AppModel {
   // MARK: - Device
 
   func refreshDevice() {
-    isConnected = K86.isConnected
+    let connected = DeviceCatalog.firstConnected()
+    isConnected = connected != nil
+    if profile?.id != connected?.id {
+      profile = connected
+      layout = connected?.layout.flatMap(KeyboardLayout.load(named:))
+    }
     guard isConnected else {
       firmware = nil
       return
@@ -120,9 +129,9 @@ final class AppModel {
   }
 
   /// Runs a device operation, surfacing failures instead of swallowing them.
-  private func withDevice(_ body: (K86) throws -> Void) {
+  private func withDevice(_ body: (Keyboard) throws -> Void) {
     do {
-      let keyboard = try K86()
+      let keyboard = try Keyboard()
       defer { keyboard.close() }
       try body(keyboard)
       deviceError = nil
@@ -162,14 +171,14 @@ final class AppModel {
 
   /// Uploads off the main thread: a 30-frame GIF takes roughly 20 seconds of
   /// chunked writes, which would otherwise freeze the whole UI.
-  func uploadScreen(url: URL, mode: K86Kit.ContentMode = .fill) async {
+  func uploadScreen(url: URL, mode: KeyboardKit.ContentMode = .fill) async {
     isUploading = true
     defer { isUploading = false }
     do {
       try await Task.detached(priority: .userInitiated) {
-        let keyboard = try K86()
+        let keyboard = try Keyboard()
         defer { keyboard.close() }
-        let frames = try Screen.loadFrames(url: url, mode: mode)
+        let frames = try Screen.loadFrames(url: url, for: keyboard, mode: mode)
         if frames.count == 1 {
           try Screen.writeImage(frames[0], on: keyboard)
         } else {
@@ -198,7 +207,7 @@ final class AppModel {
   }
 
   func pushStatsToScreen() async {
-    guard let store, K86.isConnected else {
+    guard let store, isConnected else {
       screenStatus = "screen.connect_to_update".localized
       return
     }
@@ -206,7 +215,7 @@ final class AppModel {
       try monitor?.flush()
       let card = try StatsCard.today(store: store)
       try await Task.detached(priority: .utility) {
-        let keyboard = try K86()
+        let keyboard = try Keyboard()
         defer { keyboard.close() }
         try Screen.writeImage(card, on: keyboard)
       }.value
@@ -282,7 +291,7 @@ final class AppModel {
   }
 }
 
-/// Small RGB holder so views can bind without importing K86Kit types directly.
+/// Small RGB holder so views can bind without importing KeyboardKit types directly.
 struct Color3: Equatable {
   var r: Double
   var g: Double

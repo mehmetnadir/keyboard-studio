@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import Testing
 
-@testable import K86Kit
+@testable import KeyboardKit
 
 @Suite struct ProtocolTests {
   @Test func bit7ChecksumComplementsFirstSevenBytes() {

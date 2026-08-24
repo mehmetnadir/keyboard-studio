@@ -1,4 +1,4 @@
-import K86Kit
+import KeyboardKit
 import SwiftUI
 
 /// Effect library: each tile is a miniature keyboard that animates on hover.
@@ -6,20 +6,38 @@ struct EffectGalleryView: View {
   @Environment(AppModel.self) private var model
   @State private var hovered: LightEffect?
 
+  /// Falls back to a plain grid when the connected board has no drawn layout,
+  /// so an unknown keyboard still gets usable previews.
+  private var layout: KeyboardLayout { model.layout ?? .placeholder }
+
+  private func setHover(_ effect: LightEffect, _ hovering: Bool) {
+    if hovering {
+      hovered = effect
+    } else if hovered == effect {
+      hovered = nil
+    }
+  }
+
+  private var baseColor: Color {
+    let rgb = model.mainColor
+    return Color(red: rgb.r, green: rgb.g, blue: rgb.b)
+  }
+
   private let columns = [GridItem(.adaptive(minimum: 190), spacing: 14)]
 
   var body: some View {
     LazyVGrid(columns: columns, spacing: 14) {
       ForEach(LightEffect.allCases.filter { $0 != .off }, id: \.self) { effect in
         EffectTile(
+          layout: layout,
           effect: effect,
           isSelected: model.effect == effect,
           isAnimating: hovered == effect,
-          base: Color(red: model.mainColor.r, green: model.mainColor.g, blue: model.mainColor.b),
+          base: baseColor,
           rainbow: model.rainbow
         )
         .onHover { hovering in
-          hovered = hovering ? effect : (hovered == effect ? nil : hovered)
+          setHover(effect, hovering)
         }
         .onTapGesture {
           model.effect = effect
@@ -31,13 +49,12 @@ struct EffectGalleryView: View {
 }
 
 private struct EffectTile: View {
+  let layout: KeyboardLayout
   let effect: LightEffect
   let isSelected: Bool
   let isAnimating: Bool
   let base: Color
   let rainbow: Bool
-
-  private let layout = KeyboardLayout.k86
 
   var body: some View {
     VStack(alignment: .leading, spacing: 7) {

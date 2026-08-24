@@ -1,7 +1,14 @@
 # Keyboard Studio
 
-Native, open-source macOS companion for the **Attack Shark K86** keyboard.
-No Windows software, no VM, no cloud — talks straight to the keyboard over USB HID.
+Native, open-source macOS companion for keyboards with RGB lighting and small
+screens. No Windows software, no VM, no cloud — talks straight to the keyboard
+over USB HID.
+
+Keyboards are described by JSON profiles, not code: the **Attack Shark K86** is
+the board this was built and verified against, and adding another is a data
+change — see [ADDING-A-KEYBOARD.md](ADDING-A-KEYBOARD.md). The `royuan` protocol
+family covers boards also sold as Epomaker, Akko, Hator, ikbc, NOPPOO and
+MEETION.
 
 **Status: early development.** Working today: `kstudio` CLI — RGB, side strips,
 TFT screen upload, and privacy-first typing statistics (lifetime counts, monthly
@@ -25,7 +32,9 @@ written to the keyboard's own memory — they persist when you switch back to
 Bluetooth or 2.4 GHz.
 
 ```sh
-kstudio info                     # firmware + connection status
+kstudio info                     # which keyboard is attached, and its firmware
+kstudio probe                    # what the device answers (read-only)
+kstudio measure                  # find the panel's real resolution
 kstudio color 9b59b6             # main light: solid color (hex or name)
 kstudio effect wave --speed 4    # one of 20 effects, rainbow by default
 kstudio side cyan                # side light strips

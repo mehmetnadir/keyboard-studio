@@ -1,7 +1,7 @@
 import Foundation
 import IOKit.hid
 
-public enum K86Error: Error, CustomStringConvertible {
+public enum DeviceError: Error, CustomStringConvertible {
   case deviceNotFound
   case openFailed(IOReturn)
   case reportFailed(IOReturn)
@@ -13,9 +13,9 @@ public enum K86Error: Error, CustomStringConvertible {
   public var description: String {
     switch self {
     case .deviceNotFound:
-      "K86 not found. Connect it with the USB cable (back switches: Win/Mac + USB)."
+      "No supported keyboard found. Connect it with the USB cable (switches on the back: Mac + USB)."
     case .openFailed(let code):
-      "Could not open the K86 control interface (IOReturn \(Self.hex(code)))."
+      "Could not open the keyboard's control interface (IOReturn \(Self.hex(code)))."
     case .reportFailed(let code):
       "HID feature report failed (IOReturn \(Self.hex(code)))."
     case .staleResponse:
@@ -39,11 +39,20 @@ final class HIDTransport {
   private let device: IOHIDDevice
   private var isOpen = false
 
-  static func findVendorInterface() -> IOHIDDevice? {
+  static func findVendorInterface(_ profile: DeviceProfile) -> IOHIDDevice? {
+    for productID in profile.productIDs {
+      if let device = findVendorInterface(vendorID: profile.vendorID, productID: productID) {
+        return device
+      }
+    }
+    return nil
+  }
+
+  static func findVendorInterface(vendorID: Int, productID: Int) -> IOHIDDevice? {
     let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
     let matching: [String: Any] = [
-      kIOHIDVendorIDKey: Proto.vid,
-      kIOHIDProductIDKey: Proto.pid,
+      kIOHIDVendorIDKey: vendorID,
+      kIOHIDProductIDKey: productID,
     ]
     IOHIDManagerSetDeviceMatching(manager, matching as CFDictionary)
     IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -69,10 +78,10 @@ final class HIDTransport {
     }
   }
 
-  init() throws {
-    guard let device = Self.findVendorInterface() else { throw K86Error.deviceNotFound }
+  init(profile: DeviceProfile) throws {
+    guard let device = Self.findVendorInterface(profile) else { throw DeviceError.deviceNotFound }
     let result = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
-    guard result == kIOReturnSuccess else { throw K86Error.openFailed(result) }
+    guard result == kIOReturnSuccess else { throw DeviceError.openFailed(result) }
     self.device = device
     self.isOpen = true
   }
@@ -87,7 +96,7 @@ final class HIDTransport {
       guard let base = buffer.baseAddress, !buffer.isEmpty else { return kIOReturnBadArgument }
       return IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0, base, buffer.count)
     }
-    guard result == kIOReturnSuccess else { throw K86Error.reportFailed(result) }
+    guard result == kIOReturnSuccess else { throw DeviceError.reportFailed(result) }
   }
 
   func getFeature() throws -> [UInt8] {
@@ -97,7 +106,7 @@ final class HIDTransport {
       IOHIDDeviceGetReport(
         device, kIOHIDReportTypeFeature, 0, buffer.baseAddress!, &length)
     }
-    guard result == kIOReturnSuccess else { throw K86Error.reportFailed(result) }
+    guard result == kIOReturnSuccess else { throw DeviceError.reportFailed(result) }
     return Array(data.prefix(max(0, min(Int(length), Proto.reportLen))))
   }
 

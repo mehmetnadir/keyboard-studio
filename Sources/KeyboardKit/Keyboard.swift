@@ -1,19 +1,34 @@
 import Foundation
 
-/// A connected Attack Shark K86 keyboard (vendor control interface).
+/// A connected keyboard, opened through its vendor control interface.
+///
+/// The profile decides which USB ids to look for, what the panel's geometry is
+/// and which features exist — so supporting another board is a data change, not
+/// a code change.
 ///
 /// Configuration only works over the USB cable; settings persist in the
 /// keyboard's own memory and survive switching back to Bluetooth/2.4GHz.
-public final class K86 {
+public final class Keyboard {
   private let transport: HIDTransport
+  public let profile: DeviceProfile
 
-  public init() throws {
-    transport = try HIDTransport()
+  public init(profile: DeviceProfile) throws {
+    self.profile = profile
+    self.transport = try HIDTransport(profile: profile)
+  }
+
+  /// Opens whichever supported keyboard is attached.
+  public convenience init() throws {
+    guard let profile = DeviceCatalog.firstConnected() else { throw DeviceError.deviceNotFound }
+    try self.init(profile: profile)
   }
 
   public static var isConnected: Bool {
-    HIDTransport.findVendorInterface() != nil
+    DeviceCatalog.firstConnected() != nil
   }
+
+  /// The panel's geometry, or nil when this board has no screen.
+  public var screen: DeviceProfile.ScreenSpec? { profile.capabilities.screen }
 
   public func close() {
     transport.close()
@@ -63,7 +78,7 @@ public final class K86 {
     // The opcode echo check matters: setLEDs read-modify-writes these bytes
     // into the keyboard's persistent memory, so a stale report must not pass.
     let f = try query([Proto.opGetKBOption, 0])
-    guard f.count > 4, f[0] == Proto.opGetKBOption else { throw K86Error.staleResponse }
+    guard f.count > 4, f[0] == Proto.opGetKBOption else { throw DeviceError.staleResponse }
     return (f[2], f[3], f[4])
   }
 

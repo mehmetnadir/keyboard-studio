@@ -1,0 +1,21 @@
+{
+  "id": "attackshark-k86",
+  "vendor": "Attack Shark",
+  "model": "K86",
+  "vendorID": 12625,
+  "productIDs": [16405],
+  "family": "royuan",
+  "layout": "ansi-75-knob",
+  "capabilities": {
+    "lighting": "whole",
+    "sideLighting": true,
+    "knob": true,
+    "screen": {
+      "width": 128,
+      "height": 128,
+      "pixelFormat": "rgb565",
+      "maxFrames": 30,
+      "verified": false
+    }
+  }
+}

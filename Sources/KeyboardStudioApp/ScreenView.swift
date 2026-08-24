@@ -1,9 +1,9 @@
-import K86Kit
+import KeyboardKit
 import SwiftUI
 import UniformTypeIdentifiers
 
 /// SwiftUI ships its own `ContentMode`, so the screen one is spelled out.
-private typealias ScreenFit = K86Kit.ContentMode
+private typealias ScreenFit = KeyboardKit.ContentMode
 
 struct ScreenView: View {
   @Environment(AppModel.self) private var model

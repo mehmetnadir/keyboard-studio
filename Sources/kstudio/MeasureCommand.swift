@@ -1,5 +1,5 @@
 import Foundation
-import K86Kit
+import KeyboardKit
 
 /// `kstudio measure` — finds the panel's real resolution.
 ///
@@ -15,7 +15,7 @@ enum MeasureCommand {
   ]
 
   static func run(_ args: [String]) throws {
-    let kb = try K86()
+    let kb = try Keyboard()
     defer { kb.close() }
 
     let stripe = intOption("--stripe", args, default: 32, range: 8...128)
