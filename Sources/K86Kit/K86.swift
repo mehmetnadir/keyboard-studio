@@ -41,6 +41,21 @@ public final class K86 {
     return (Int(f[2]) << 8) | Int(f[1])
   }
 
+  // MARK: - Diagnostics
+
+  /// Sends a bare read-only opcode and returns the raw reply. For exploring
+  /// what a given firmware reports; callers interpret the bytes themselves.
+  public func probe(opcode: UInt8) throws -> [UInt8] {
+    try query([opcode])
+  }
+
+  /// Asks whether the panel would accept a frame of this size, without sending
+  /// any pixels. Used to discover the real screen resolution rather than
+  /// trusting a hard-coded constant.
+  public func probeScreenGeometry(width: Int, height: Int) -> Bool {
+    Screen.handshakeAccepts(width: width, height: height, on: self)
+  }
+
   // MARK: - LED master switch
 
   /// (mainByte, sideByte, powerSave) from the kboption block.

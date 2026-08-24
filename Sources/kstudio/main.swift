@@ -51,6 +51,7 @@ func usage() -> Never {
       kstudio screen --test                 upload RGBW test pattern
       kstudio screen --stats                show today's typing stats on the keyboard
       kstudio effects                       list effect names
+      kstudio probe                         ask the device about itself (read-only)
       kstudio stats                         typing statistics summary
       kstudio watch [seconds]               count presses live (needs Input Monitoring)
       kstudio card <out.png> [--demo]       preview the keyboard screen card as PNG
@@ -83,6 +84,9 @@ do {
 
   case "card":
     try CardCommand.run(args)
+
+  case "probe":
+    try ProbeCommand.run()
 
   case "info":
     let kb = try K86()
@@ -146,6 +150,16 @@ do {
     if args[1] == "--test" {
       try Screen.writeImage(Screen.testPattern(), on: kb)
       print("Test pattern uploaded.")
+    } else if args[1] == "--ruler" {
+      try Screen.writeImage(Screen.rulerPattern(), on: kb)
+      print(
+        """
+        Calibration pattern uploaded (assuming \(Screen.width)×\(Screen.height)).
+        Look at the keyboard:
+          • white border touching all four edges  → the size is correct
+          • image in one corner with dead space   → the panel is larger
+          • edges cut off                          → the panel is smaller
+        """)
     } else if args[1] == "--stats" {
       let store = try StatsStore(path: StatsStore.defaultPath())
       defer { store.close() }

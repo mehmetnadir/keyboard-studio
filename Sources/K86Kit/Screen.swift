@@ -84,11 +84,23 @@ public enum Screen {
     }
   }
 
+  // MARK: - Diagnostics
+
+  /// Runs only the write handshake for a frame of the given size. No pixel data
+  /// follows, so the panel keeps its current contents.
+  static func handshakeAccepts(width: Int, height: Int, on kb: K86) -> Bool {
+    let byteLength = width * height * 2  // RGB565
+    return (try? canWrite(
+      kb, byteLength: byteLength, frameIndex: 0, allFrames: 1, delay: 0, layer: 0,
+      right: width, bottom: height, retries: 3)) ?? false
+  }
+
   // MARK: - Protocol
 
   private static func canWrite(
     _ kb: K86, byteLength: Int, frameIndex: UInt8, allFrames: UInt8,
-    delay: UInt8, layer: UInt8
+    delay: UInt8, layer: UInt8, right: Int = Screen.width, bottom: Int = Screen.height,
+    retries: Int = 10
   ) throws -> Bool {
     var s = [UInt8](repeating: 0, count: Proto.reportLen)
     s[0] = opCanWrite
@@ -97,19 +109,19 @@ public enum Screen {
     s[3] = delay
     s[4] = UInt8(byteLength & 0xFF)
     s[5] = UInt8((byteLength >> 8) & 0xFF)
-    // Target rectangle (full frame): left, top, right, bottom — low then high bytes.
+    // Target rectangle: left, top, right, bottom — low bytes then high bytes.
     s[8] = 0
     s[9] = 0
-    s[10] = UInt8(width & 0xFF)
-    s[11] = UInt8(height & 0xFF)
+    s[10] = UInt8(right & 0xFF)
+    s[11] = UInt8(bottom & 0xFF)
     s[12] = 0
     s[13] = 0
-    s[14] = UInt8(width >> 8)
-    s[15] = UInt8(height >> 8)
+    s[14] = UInt8(right >> 8)
+    s[15] = UInt8(bottom >> 8)
     s[16] = UInt8((byteLength >> 16) & 0xFF)
     s[17] = UInt8((byteLength >> 24) & 0xFF)
     s[18] = layer
-    for _ in 0..<10 {
+    for _ in 0..<retries {
       // try? — a transient transport error must consume one retry, not abort
       // the whole handshake loop; the opcode echo guards against stale reports.
       if let f = try? kb.query(s, mode: .bit7, wait: 0.1),
@@ -240,6 +252,42 @@ public enum Screen {
       ?? (gif[kCGImagePropertyGIFDelayTime] as? Double) ?? 0.1
     let units = (seconds * 100).rounded()
     return UInt8(min(255.0, max(1.0, units.isFinite ? units : 10)))
+  }
+
+  /// Calibration pattern: a 2 px border hugging the very edge of the frame,
+  /// corner blocks, and centre crosshairs.
+  ///
+  /// It answers a question the protocol cannot: the firmware accepts a write
+  /// handshake for any frame size, so the only way to confirm the panel's real
+  /// resolution is to send a frame whose edges are visible and look at it. If
+  /// the border touches all four edges, the assumed size is correct; if the
+  /// image sits in a corner with dead space around it, the panel is larger.
+  public static func rulerPattern() -> ScreenFrame {
+    var rgb = [UInt8](repeating: 0, count: width * height * 3)
+    func set(_ x: Int, _ y: Int, _ color: (UInt8, UInt8, UInt8)) {
+      guard x >= 0, x < width, y >= 0, y < height else { return }
+      let i = (y * width + x) * 3
+      (rgb[i], rgb[i + 1], rgb[i + 2]) = color
+    }
+
+    for y in 0..<height {
+      for x in 0..<width {
+        let onBorder = x < 2 || y < 2 || x >= width - 2 || y >= height - 2
+        if onBorder { set(x, y, (255, 255, 255)) }
+        // Centre crosshairs.
+        if abs(x - width / 2) < 1 || abs(y - height / 2) < 1 { set(x, y, (70, 70, 80)) }
+      }
+    }
+    // Corner blocks, 10 px, inset by the border.
+    for y in 0..<10 {
+      for x in 0..<10 {
+        set(2 + x, 2 + y, (255, 60, 60))
+        set(width - 12 + x, 2 + y, (60, 255, 60))
+        set(2 + x, height - 12 + y, (60, 120, 255))
+        set(width - 12 + x, height - 12 + y, (255, 220, 0))
+      }
+    }
+    return ScreenFrame(rgb: rgb)
   }
 
   /// Red / green / blue / white quadrants — device test without an image file.
