@@ -1,5 +1,7 @@
 import Foundation
 import K86Kit
+import StatsCore
+import StatsScreen
 
 let namedColors: [String: RGB] = [
   "red": RGB(255, 0, 0), "green": RGB(0, 255, 0), "blue": RGB(0, 0, 255),
@@ -47,14 +49,20 @@ func usage() -> Never {
       kstudio side <hex|name> [opts]        side strip color
       kstudio screen <image|gif>            upload to the 128x128 TFT screen
       kstudio screen --test                 upload RGBW test pattern
+      kstudio screen --stats                show today's typing stats on the keyboard
       kstudio effects                       list effect names
       kstudio stats                         typing statistics summary
       kstudio watch [seconds]               count presses live (needs Input Monitoring)
+      kstudio card <out.png> [--demo]       preview the keyboard screen card as PNG
 
     OPTIONS:
       --bright 0-4   brightness (default 4)
       --speed 0-5    effect speed (default 3)
       --color <hex>  fixed color for `effect` (disables rainbow)
+
+    SCREEN OPTIONS (the panel is 128x128; sources are centre-cropped by default):
+      --fit          fit the whole image, padding the short edge
+      --stretch      stretch to the square, distorting non-square sources
 
     The keyboard must be connected by USB cable (back switches: Mac + USB).
     Settings persist on the keyboard after you switch back to Bluetooth.
@@ -72,6 +80,9 @@ do {
 
   case "stats", "watch":
     try StatsCommands.run(args)
+
+  case "card":
+    try CardCommand.run(args)
 
   case "info":
     let kb = try K86()
@@ -135,8 +146,15 @@ do {
     if args[1] == "--test" {
       try Screen.writeImage(Screen.testPattern(), on: kb)
       print("Test pattern uploaded.")
+    } else if args[1] == "--stats" {
+      let store = try StatsStore(path: StatsStore.defaultPath())
+      defer { store.close() }
+      try Screen.writeImage(try StatsCard.today(store: store), on: kb)
+      print("Today's statistics uploaded to the keyboard screen.")
     } else {
-      let frames = try Screen.loadFrames(url: URL(fileURLWithPath: args[1]))
+      let mode: ContentMode =
+        args.contains("--fit") ? .fit : (args.contains("--stretch") ? .stretch : .fill)
+      let frames = try Screen.loadFrames(url: URL(fileURLWithPath: args[1]), mode: mode)
       if frames.count == 1 {
         try Screen.writeImage(frames[0], on: kb)
         print("Image uploaded.")

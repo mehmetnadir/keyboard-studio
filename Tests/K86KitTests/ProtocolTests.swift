@@ -1,3 +1,5 @@
+import CoreGraphics
+import Foundation
 import Testing
 
 @testable import K86Kit
@@ -56,6 +58,29 @@ import Testing
     let pos = (1 * 128 + 0) * 2  // column-major slot for (x=1, y=0)
     #expect(out[pos] == 0xF8 && out[pos + 1] == 0x00)
     #expect(out[0] == 0 && out[1] == 0)
+  }
+
+  @Test func contentModeMapsWideSourceCorrectly() {
+    // A 256×128 source: twice as wide as the square panel.
+    let wide = CGImage(
+      width: 256, height: 128, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 256 * 4,
+      space: CGColorSpaceCreateDeviceRGB(),
+      bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+      provider: CGDataProvider(data: Data(count: 256 * 128 * 4) as CFData)!, decode: nil,
+      shouldInterpolate: false, intent: .defaultIntent)!
+
+    let fill = Screen.destinationRect(for: wide, mode: .fill)
+    #expect(fill.height == 128)  // short edge matches
+    #expect(fill.width == 256)  // long edge overflows and is cropped
+    #expect(fill.origin.x == -64)  // centred
+
+    let fit = Screen.destinationRect(for: wide, mode: .fit)
+    #expect(fit.width == 128)  // whole image fits
+    #expect(fit.height == 64)
+    #expect(fit.origin.y == 32)  // letterboxed
+
+    let stretch = Screen.destinationRect(for: wide, mode: .stretch)
+    #expect(stretch == CGRect(x: 0, y: 0, width: 128, height: 128))
   }
 
   @Test func testPatternQuadrants() {

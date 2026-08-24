@@ -13,9 +13,11 @@ let package = Package(
   targets: [
     .target(name: "K86Kit"),
     .target(name: "StatsCore"),
-    .executableTarget(name: "kstudio", dependencies: ["K86Kit", "StatsCore"]),
-    .executableTarget(name: "KeyboardStudioApp", dependencies: ["K86Kit", "StatsCore"]),
+    .target(name: "StatsScreen", dependencies: ["K86Kit", "StatsCore"]),
+    .executableTarget(name: "kstudio", dependencies: ["K86Kit", "StatsCore", "StatsScreen"]),
+    .executableTarget(name: "KeyboardStudioApp", dependencies: ["K86Kit", "StatsCore", "StatsScreen"]),
     .testTarget(name: "K86KitTests", dependencies: ["K86Kit"]),
     .testTarget(name: "StatsCoreTests", dependencies: ["StatsCore"]),
+    .testTarget(name: "StatsScreenTests", dependencies: ["StatsScreen"]),
   ]
 )

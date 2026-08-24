@@ -15,11 +15,33 @@ public struct ScreenFrame: Sendable {
   }
 }
 
+/// How a source image is mapped onto the square panel.
+public enum ContentMode: String, Sendable, CaseIterable {
+  /// Fill the panel, cropping the long edge — no distortion. The default,
+  /// because most photos and GIFs read better cropped than squashed.
+  case fill
+  /// Fit the whole image inside the panel, padding the short edge.
+  case fit
+  /// Stretch to 128×128, distorting non-square sources.
+  case stretch
+}
+
 /// TFT screen upload: RGB565 encode (column-major, big-endian), a write
 /// handshake, then the pixel stream in 56-byte chunks.
+///
+/// Panel facts worth knowing before preparing artwork:
+/// - 128 × 128 pixels, square, RGB565 (65 536 colours — fine gradients band).
+/// - Animations: up to `maxFrames` frames per upload; the firmware indexes
+///   frames in a single byte, so 255 is the hard ceiling.
+/// - Frame delay comes from the GIF itself, quantised to 10 ms units and
+///   clamped to 10 ms … 2.55 s.
 public enum Screen {
   public static let width = 128
   public static let height = 128
+  /// Default animation frame budget. Higher values upload slowly (each frame
+  /// is 32 KB of pixel data sent in 56-byte chunks) and can exhaust device
+  /// memory; 255 is the protocol maximum.
+  public static let maxFrames = 30
 
   static let opCanWrite: UInt8 = 165  // FEA_CMD_GETTFTLCDDATA (RGB565 mode)
   static let opData: UInt8 = 37       // FEA_CMD_SETTFTLCDDATA
@@ -144,32 +166,36 @@ public enum Screen {
 
   // MARK: - Image loading (ImageIO — animated GIF supported)
 
-  public static func loadFrames(url: URL, maxFrames: Int = 30) throws -> [ScreenFrame] {
+  public static func loadFrames(
+    url: URL, mode: ContentMode = .fill, maxFrames: Int = Screen.maxFrames
+  ) throws -> [ScreenFrame] {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
       CGImageSourceGetCount(source) > 0
     else {
       throw CocoaError(.fileReadCorruptFile)
     }
-    let count = min(CGImageSourceGetCount(source), maxFrames)
+    let count = min(CGImageSourceGetCount(source), max(1, min(maxFrames, 255)))
     var frames: [ScreenFrame] = []
     for index in 0..<count {
       guard let image = CGImageSourceCreateImageAtIndex(source, index, nil) else {
         throw K86Error.imageDecodeFailed
       }
       frames.append(
-        ScreenFrame(rgb: try rasterize(image), delayByte: delayByte(source, index)))
+        ScreenFrame(rgb: try rasterize(image, mode: mode), delayByte: delayByte(source, index)))
     }
     return frames
   }
 
-  private static func rasterize(_ image: CGImage) throws -> [UInt8] {
+  private static func rasterize(_ image: CGImage, mode: ContentMode) throws -> [UInt8] {
     guard let context = CGContext(
       data: nil, width: width, height: height, bitsPerComponent: 8,
       bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
       bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
     else { throw K86Error.imageDecodeFailed }
     context.interpolationQuality = .high
-    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    context.setFillColor(gray: 0, alpha: 1)
+    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    context.draw(image, in: destinationRect(for: image, mode: mode))
     guard let base = context.data else { throw K86Error.imageDecodeFailed }
     let rgba = base.assumingMemoryBound(to: UInt8.self)
     var rgb = [UInt8](repeating: 0, count: width * height * 3)
@@ -179,6 +205,27 @@ public enum Screen {
       rgb[pixel * 3 + 2] = rgba[pixel * 4 + 2]
     }
     return rgb
+  }
+
+  /// Where to draw the source so the panel is filled, fitted or stretched.
+  /// Returned in the panel's coordinate space; may extend past the edges for
+  /// `.fill`, which is what produces the centre crop.
+  static func destinationRect(for image: CGImage, mode: ContentMode) -> CGRect {
+    let panel = CGRect(x: 0, y: 0, width: width, height: height)
+    let sourceWidth = CGFloat(image.width)
+    let sourceHeight = CGFloat(image.height)
+    guard mode != .stretch, sourceWidth > 0, sourceHeight > 0 else { return panel }
+
+    let scale: CGFloat = switch mode {
+    case .fill: max(panel.width / sourceWidth, panel.height / sourceHeight)
+    case .fit: min(panel.width / sourceWidth, panel.height / sourceHeight)
+    case .stretch: 1
+    }
+    let drawnWidth = sourceWidth * scale
+    let drawnHeight = sourceHeight * scale
+    return CGRect(
+      x: (panel.width - drawnWidth) / 2, y: (panel.height - drawnHeight) / 2,
+      width: drawnWidth, height: drawnHeight)
   }
 
   private static func delayByte(_ source: CGImageSource, _ index: Int) -> UInt8 {

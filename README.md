@@ -31,8 +31,26 @@ kstudio effect wave --speed 4    # one of 20 effects, rainbow by default
 kstudio side cyan                # side light strips
 kstudio screen photo.png         # 128x128 TFT screen: image
 kstudio screen animation.gif     # ...or animated GIF (up to 30 frames)
+kstudio screen wide.jpg --fit    # fit instead of centre-crop
+kstudio screen --stats           # today's typing stats, on the keyboard itself
+kstudio card out.png --demo      # preview the stats card without the keyboard
 kstudio leds off                 # LED master switch
 ```
+
+### Screen specifications
+
+| | |
+|---|---|
+| Resolution | **128 × 128 pixels**, square |
+| Colour | RGB565 — 65 536 colours (fine gradients may band) |
+| Animation | up to 30 frames per upload by default (255 is the protocol limit) |
+| Frame delay | taken from the GIF, rounded to 10 ms steps, 10 ms – 2.55 s |
+| Non-square sources | centre-cropped to fill; `--fit` letterboxes, `--stretch` distorts |
+| Upload time | roughly 0.6 s per frame over USB |
+
+Artwork tips: design at 128 × 128 (or any square multiple) to avoid cropping,
+keep text large — 10 px is about the smallest that stays legible — and prefer
+flat colour over gradients, which band in RGB565.
 
 ### Typing statistics
 
