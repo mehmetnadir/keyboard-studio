@@ -1,23 +1,32 @@
+import K86Kit
 import SwiftUI
 import UniformTypeIdentifiers
+
+/// SwiftUI ships its own `ContentMode`, so the screen one is spelled out.
+private typealias ScreenFit = K86Kit.ContentMode
 
 struct ScreenView: View {
   @Environment(AppModel.self) private var model
   @State private var preview: NSImage?
   @State private var status: String?
   @State private var isTargeted = false
+  @State private var mode: ScreenFit = .fill
 
   var body: some View {
-    VStack(spacing: 18) {
+    @Bindable var model = model
+
+    VStack(spacing: 16) {
       dropTarget
       HStack {
         Button("Choose image or GIF…") { chooseFile() }
-        if preview != nil {
-          Button("Clear") {
-            preview = nil
-            status = nil
-          }
+        Picker("", selection: $mode) {
+          Text("Crop").tag(ScreenFit.fill)
+          Text("Fit").tag(ScreenFit.fit)
+          Text("Stretch").tag(ScreenFit.stretch)
         }
+        .pickerStyle(.segmented)
+        .frame(width: 190)
+        .labelsHidden()
       }
       .disabled(!model.isConnected)
 
@@ -26,7 +35,23 @@ struct ScreenView: View {
           .font(.callout)
           .foregroundStyle(.secondary)
       }
-      Text("The screen is 128×128. Images are resized; GIFs upload up to 30 frames.")
+
+      Divider()
+
+      VStack(alignment: .leading, spacing: 6) {
+        Toggle("Show today's statistics on the keyboard", isOn: $model.screenShowsStats)
+        Text("Refreshes every 5 minutes while the app is running.")
+          .font(.caption)
+          .foregroundStyle(.tertiary)
+        if let screenStatus = model.screenStatus {
+          Text(screenStatus)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+
+      Text("The panel is 128×128 and shows 65 536 colours. GIFs upload up to 30 frames.")
         .font(.caption)
         .foregroundStyle(.tertiary)
       Spacer()
@@ -91,7 +116,7 @@ struct ScreenView: View {
   private func upload(_ url: URL) {
     preview = NSImage(contentsOf: url)
     status = "Uploading…"
-    model.uploadScreen(url: url)
+    model.uploadScreen(url: url, mode: mode)
     status = model.deviceError ?? "Uploaded to the keyboard."
   }
 }

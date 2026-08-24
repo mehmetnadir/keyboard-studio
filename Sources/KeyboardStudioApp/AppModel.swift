@@ -2,6 +2,7 @@ import Foundation
 import K86Kit
 import Observation
 import StatsCore
+import StatsScreen
 
 /// Shared state for the app: device connection, lighting, and statistics.
 @MainActor
@@ -32,9 +33,16 @@ final class AppModel {
   var statsError: String?
   var monitoringEnabled = false
 
+  /// Mirrors today's card onto the keyboard screen while the app runs.
+  var screenShowsStats = false {
+    didSet { screenShowsStats ? startScreenMirror() : stopScreenMirror() }
+  }
+  var screenStatus: String?
+
   private var store: StatsStore?
   private var monitor: KeyMonitor?
   private var refreshTimer: Timer?
+  private var screenTimer: Timer?
 
   // MARK: - Lifecycle
 
@@ -52,8 +60,41 @@ final class AppModel {
 
   func onDisappear() {
     refreshTimer?.invalidate()
+    screenTimer?.invalidate()
     monitor?.stop()
     store?.close()
+  }
+
+  // MARK: - Screen mirror
+
+  private func startScreenMirror() {
+    pushStatsToScreen()
+    screenTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+      Task { @MainActor in self?.pushStatsToScreen() }
+    }
+  }
+
+  private func stopScreenMirror() {
+    screenTimer?.invalidate()
+    screenTimer = nil
+    screenStatus = nil
+  }
+
+  func pushStatsToScreen() {
+    guard let store, K86.isConnected else {
+      screenStatus = "Connect the cable to update the screen."
+      return
+    }
+    do {
+      try monitor?.flush()
+      let card = try StatsCard.today(store: store)
+      let keyboard = try K86()
+      defer { keyboard.close() }
+      try Screen.writeImage(card, on: keyboard)
+      screenStatus = "Updated \(Date().formatted(date: .omitted, time: .shortened))"
+    } catch {
+      screenStatus = String(describing: error)
+    }
   }
 
   // MARK: - Device
@@ -113,9 +154,9 @@ final class AppModel {
     }
   }
 
-  func uploadScreen(url: URL) {
+  func uploadScreen(url: URL, mode: ContentMode = .fill) {
     withDevice { keyboard in
-      let frames = try Screen.loadFrames(url: url)
+      let frames = try Screen.loadFrames(url: url, mode: mode)
       if frames.count == 1 {
         try Screen.writeImage(frames[0], on: keyboard)
       } else {
