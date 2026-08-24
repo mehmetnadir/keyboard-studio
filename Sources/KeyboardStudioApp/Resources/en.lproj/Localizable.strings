@@ -70,3 +70,7 @@
 "menu.language.english" = "English";
 "menu.language.turkish" = "Türkçe";
 "menu.language.restart_note" = "Applies after restarting the app.";
+
+/* Effect library */
+"lights.library" = "Effect library";
+"lights.library.hint" = "Hover a tile to see it move; click to send it to the keyboard.";

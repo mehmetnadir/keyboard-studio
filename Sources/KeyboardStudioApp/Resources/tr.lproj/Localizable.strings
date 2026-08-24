@@ -70,3 +70,7 @@
 "menu.language.english" = "English";
 "menu.language.turkish" = "Türkçe";
 "menu.language.restart_note" = "Uygulama yeniden başlatılınca geçerli olur.";
+
+/* Efekt kütüphanesi */
+"lights.library" = "Efekt kütüphanesi";
+"lights.library.hint" = "Hareketini görmek için üzerine gel, klavyeye göndermek için tıkla.";

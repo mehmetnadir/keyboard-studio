@@ -10,16 +10,17 @@ struct LightsView: View {
     Form {
       Section("lights.main") {
         ColorPicker("lights.colour", selection: colorBinding(for: \.mainColor), supportsOpacity: false)
-        Picker("lights.effect", selection: $model.effect) {
-          ForEach(LightEffect.allCases, id: \.self) { effect in
-            Text(effect.rawValue.capitalized).tag(effect)
-          }
-        }
-        if model.effect != .solid {
-          Toggle("lights.rainbow", isOn: $model.rainbow)
-        }
+        Toggle("lights.rainbow", isOn: $model.rainbow)
         Button("lights.apply") { model.applyMainLight() }
           .disabled(!model.isConnected)
+      }
+
+      Section("lights.library") {
+        Text("lights.library.hint")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        EffectGalleryView()
+          .padding(.vertical, 4)
       }
 
       Section("lights.side") {
