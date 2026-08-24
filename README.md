@@ -10,7 +10,7 @@ champions, streaks). Coming next: the SwiftUI app.
 ## Install (from source)
 
 ```sh
-git clone <this repository>
+git clone https://github.com/mehmetnadir/keyboard-studio.git
 cd keyboard-studio
 swift build -c release
 .build/release/kstudio info
