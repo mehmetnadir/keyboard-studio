@@ -19,5 +19,14 @@ sleep 1
 rm -rf "$DEST"
 cp -R "$ROOT/build/$APP" "$DEST"
 
+# Keep TCC, the sandbox container and LaunchServices in agreement. If they
+# disagree — which happens when a container is removed by hand, or an app is
+# re-signed repeatedly — the app exits at launch with no crash report and no
+# log entry. Resetting costs a permission prompt; not resetting costs an hour.
+tccutil reset All dev.keyboardstudio.app >/dev/null 2>&1 || true
+rm -rf "$HOME/Library/Containers/dev.keyboardstudio.app" 2>/dev/null || true
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+[ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$DEST" >/dev/null 2>&1 || true
+
 echo "Installed: $DEST"
 echo "Open it from Applications, or:  open -a 'Keyboard Studio'"

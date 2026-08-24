@@ -65,7 +65,7 @@ final class AppProfileWatcher {
       // String is, so nothing non-Sendable crosses into the actor hop.
       let bundleID = (note.userInfo?[NSWorkspace.applicationUserInfoKey]
         as? NSRunningApplication)?.bundleIdentifier
-      MainActor.assumeIsolated {
+      Task { @MainActor in
         self?.frontmostChanged(to: bundleID)
       }
     }

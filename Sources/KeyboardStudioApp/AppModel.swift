@@ -137,7 +137,7 @@ final class AppModel {
 
     refreshTimer?.invalidate()
     refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-      MainActor.assumeIsolated {
+      Task { @MainActor in
         self?.refreshDevice()
         self?.refreshStats()
       }
@@ -149,6 +149,8 @@ final class AppModel {
       terminationObserver = NotificationCenter.default.addObserver(
         forName: NSApplication.willTerminateNotification, object: nil, queue: .main
       ) { [weak self] _ in
+        // Synchronous on purpose: an async hop would not complete before the
+        // process exits, and this is what flushes pending counts.
         MainActor.assumeIsolated { self?.shutDown() }
       }
     }
@@ -160,7 +162,7 @@ final class AppModel {
       wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
         forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
       ) { [weak self] _ in
-        MainActor.assumeIsolated { self?.handleWake() }
+        Task { @MainActor in self?.handleWake() }
       }
     }
 
@@ -352,7 +354,7 @@ final class AppModel {
     paintCooldownTimer?.invalidate()
     paintCooldownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) {
       [weak self] _ in
-      MainActor.assumeIsolated {
+      Task { @MainActor in
         guard let model = self else { return }
         let remaining = model.paintThrottle.remainingWait()
         model.paintCooldown = remaining > 0 ? remaining : nil
