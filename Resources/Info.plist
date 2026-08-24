@@ -6,6 +6,8 @@
   <string>Keyboard Studio</string>
   <key>CFBundleDisplayName</key>
   <string>Keyboard Studio</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundleIdentifier</key>
   <string>dev.keyboardstudio.app</string>
   <key>CFBundleExecutable</key>
