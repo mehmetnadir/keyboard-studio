@@ -1,6 +1,16 @@
 # App exits silently at launch — cause and fix
 
-**Cause: stale TCC / container state, not the build.** Fixed by resetting both.
+**Cause: App Sandbox on an ad-hoc signed build.** The sandbox entitlement was
+removed; see PRIVACY.md for what that changes.
+
+A sandboxed app needs a container, and macOS will not create one for a build
+signed with `codesign --sign -`. The process dies before `main()` runs — which
+is why adding NSLog traces to `init` and `onAppear` produced *nothing*: it never
+got that far. That absence was the decisive clue.
+
+The earlier fix below (resetting TCC and the container) made it launch once,
+because a container that already existed could still be reused. Deleting the
+container removed that crutch and exposed the real problem.
 
 ```sh
 tccutil reset All dev.keyboardstudio.app
@@ -53,3 +63,24 @@ run on the main *thread*, which is not the same as being main-actor isolated —
 checked in debug, undefined in release. Replaced with `Task { @MainActor }`,
 except at `willTerminate`, which must stay synchronous or pending key counts
 would not be flushed before exit.
+
+
+## Postscript: the real cause
+
+Two wrong diagnoses preceded the right one, and both were wrong the same way —
+a state change between runs made an uncontrolled comparison look controlled:
+
+1. **Optimisation.** Debug passed, release failed, `-Onone` passed. But the
+   container had been deleted in between, so the runs were not comparable.
+2. **TCC/container staleness.** Resetting them worked — once — because the app
+   recreated a container while the old TCC record was gone. It failed again on
+   the next clean install.
+
+What settled it was adding traces and finding **none of them ran**. An app that
+produces no output from the first line of `init` has not failed *in* its code;
+it has failed before its code. From there the sandbox was the only candidate.
+
+The lesson worth keeping: when a bug appears to depend on build configuration,
+first prove the configurations differ under *identical* environment state. And
+when a trace at the very first line does not print, stop debugging the program
+and start debugging its launch.

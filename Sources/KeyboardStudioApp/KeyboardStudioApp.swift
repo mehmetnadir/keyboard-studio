@@ -4,6 +4,7 @@ import SwiftUI
 struct KeyboardStudioApp: App {
   @State private var model = AppModel()
 
+
   var body: some Scene {
     Window("Keyboard Studio", id: "main") {
       MainView()

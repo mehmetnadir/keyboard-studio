@@ -57,10 +57,16 @@ to trust:
    not honour this limit even in principle.
 2. **Keyboard usages only.** Only HID usage page `0x07` (Keyboard/Keypad) values
    are counted. Consumer keys, the knob and pointer usages are discarded.
-3. **No network — enforced by the kernel.** The app runs in the App Sandbox and
-   deliberately omits `com.apple.security.network.client`, so macOS refuses any
-   outbound connection it might attempt. It also contains no networking code.
-   There is no telemetry, no crash reporting, no update ping.
+3. **No network.** The app contains no networking code at all — no telemetry,
+   no crash reporting, no update ping. Verify it yourself with the grep below;
+   it is a claim you can check in seconds.
+
+   This used to be enforced by the App Sandbox as well, which was stronger. It
+   had to be dropped: a sandboxed app needs a container, and macOS will not
+   create one for an ad-hoc signed build, so the app would not launch at all
+   for anyone who builds it themselves. If you sign with a Developer ID,
+   re-enabling the sandbox in `Resources/KeyboardStudio.entitlements` restores
+   the kernel-level guarantee.
 4. **No sync.** The database is a plain file under
    `~/Library/Application Support/KeyboardStudio/`, created with `0700`
    permissions. Nothing copies it anywhere.
@@ -97,9 +103,6 @@ Turning the screen mode off stops the asking entirely.
 ```sh
 # Read your own data — it is a normal SQLite file:
 sqlite3 ~/Library/Application\ Support/KeyboardStudio/stats.sqlite .dump | head
-
-# Confirm the signed app has no network permission (expect 0):
-codesign -d --entitlements - '/Applications/Keyboard Studio.app' | grep -c network.client
 
 # Confirm no outbound connections while it runs:
 lsof -i -a -p $(pgrep -f 'Keyboard Studio')     # expect no output

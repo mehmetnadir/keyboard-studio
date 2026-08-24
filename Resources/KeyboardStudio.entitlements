@@ -2,20 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- Sandboxed on purpose: the absence of com.apple.security.network.client
-       makes "this app cannot reach the network" a kernel-enforced fact rather
-       than a promise. See PRIVACY.md. -->
-  <key>com.apple.security.app-sandbox</key>
-  <true/>
-  <!-- Talking to the keyboard over USB HID. -->
-  <key>com.apple.security.device.usb</key>
-  <true/>
-  <!-- Asking the running music player what is playing. Apple Events are
-       local; this grants no network access. -->
+  <!-- App Sandbox is deliberately NOT enabled here.
+       It was, and the no-network guarantee it gave was worth having. But a
+       sandboxed app needs a container, and macOS will not create one for an
+       ad-hoc signed build — the process dies before main() runs, with no crash
+       report. Since this project is built and self-signed by whoever installs
+       it, sandboxing would mean shipping something that does not launch.
+       The no-network property still holds; it is now enforced by there being
+       no networking code, which PRIVACY.md shows how to verify, rather than by
+       the kernel. Re-enable the sandbox if you sign with a Developer ID. -->
+
+  <!-- Asking the running music player what is playing. Apple Events are local;
+       this grants no network access. -->
   <key>com.apple.security.automation.apple-events</key>
-  <true/>
-  <!-- Opening an image or GIF the user picked. -->
-  <key>com.apple.security.files.user-selected.read-only</key>
   <true/>
 </dict>
 </plist>

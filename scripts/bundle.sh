@@ -50,5 +50,5 @@ codesign --verify --strict "$APP" && echo "Signature verified"
 echo "Built: $APP"
 echo "Run:   open '$APP'"
 echo
-echo "Verify the sandbox denies networking:"
-echo "  codesign -d --entitlements - '$APP' | grep -c network.client   # expect 0"
+echo "Verify there is no networking:"
+echo "  grep -rn 'URLSession\\|Network\\.' Sources/   # expect no matches"
