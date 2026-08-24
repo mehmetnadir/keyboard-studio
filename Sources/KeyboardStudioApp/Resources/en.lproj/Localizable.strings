@@ -78,3 +78,24 @@
 /* Secure input */
 "stats.secure_input.title" = "Paused — macOS is protecting your input";
 "stats.secure_input.detail" = "A password field is focused. macOS withholds keyboard events from every app, including this one.";
+
+/* Settings */
+"tab.settings" = "Settings";
+"settings.general" = "General";
+"settings.counting" = "Typing statistics";
+"settings.counting.enabled" = "Count key presses";
+"settings.counting.detail" = "Only your keyboard is counted, and only how many times each key was pressed — never the order, never the text.";
+"settings.data_location" = "Your data";
+"settings.reveal" = "Show in Finder";
+"settings.device" = "Keyboard";
+"settings.device.model" = "Model";
+"settings.device.id" = "Profile";
+"settings.device.firmware" = "Firmware";
+"settings.device.screen" = "Screen";
+"settings.device.unverified" = "(unverified)";
+"settings.device.add" = "Add a keyboard";
+"settings.device.add.detail" = "Drop a device profile in this folder to support another keyboard — no rebuild needed. See ADDING-A-KEYBOARD.md.";
+"settings.about" = "About";
+"settings.about.version" = "Version";
+"settings.about.source" = "Source code on GitHub";
+"settings.about.privacy" = "MIT licensed. No network access, no telemetry. Not affiliated with Attack Shark or ROYUAN.";

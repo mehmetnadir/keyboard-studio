@@ -19,9 +19,16 @@ cp "$BINARY" "$APP/Contents/MacOS/Keyboard Studio"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 
 # SwiftPM keeps localizations in its own resource bundle, which Bundle.module
-# looks for next to the executable. Without this the UI falls back to raw keys.
+# looks for next to the executable.
 for bundle in "$ROOT/.build/$CONFIG"/*.bundle; do
   [ -e "$bundle" ] && cp -R "$bundle" "$APP/Contents/MacOS/"
+done
+
+# SwiftUI resolves Text("key") against the MAIN bundle, not the package's
+# resource bundle — so the .lproj folders have to live in Contents/Resources
+# too, or every label renders as its raw key.
+for lproj in "$ROOT/Sources/KeyboardStudioApp/Resources"/*.lproj; do
+  [ -d "$lproj" ] && cp -R "$lproj" "$APP/Contents/Resources/"
 done
 
 # Ad-hoc signature with the sandbox entitlements. --deep is deliberately not

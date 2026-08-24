@@ -11,10 +11,25 @@ public struct DeviceProfile: Codable, Sendable, Identifiable, Hashable {
   public let vendor: String
   public let model: String
   /// USB vendor id, e.g. 0x3151 for ROYUAN.
+  ///
+  /// Note this identifies a *family*, not a model. Across this manufacturer's
+  /// catalogue a single vendor/product pair is shared by dozens of different
+  /// keyboards, so USB ids can only narrow the search.
   public let vendorID: Int
   /// Product ids this profile matches. Tri-mode boards often enumerate under a
   /// different id per connection, so this is a list rather than one value.
   public let productIDs: [Int]
+  /// The device id the board reports to opcode 0x8F — the actual model key.
+  /// Where USB ids collide across models, this is what tells them apart, so it
+  /// is checked before anything is written.
+  public let handshakeID: Int?
+  /// How much the entries here are trusted. `guess` means nobody has run the
+  /// board; it should not be written to without the user opting in.
+  public var confidence: Confidence?
+
+  public enum Confidence: String, Codable, Sendable {
+    case confirmed, probable, guess
+  }
   /// Which wire protocol drives it. Boards from one manufacturer share a family.
   public let family: ProtocolFamily
   public let capabilities: Capabilities
@@ -91,13 +106,16 @@ public struct DeviceProfile: Codable, Sendable, Identifiable, Hashable {
 
   public init(
     id: String, vendor: String, model: String, vendorID: Int, productIDs: [Int],
-    family: ProtocolFamily, capabilities: Capabilities, layout: String? = nil
+    family: ProtocolFamily, capabilities: Capabilities, layout: String? = nil,
+    handshakeID: Int? = nil, confidence: Confidence? = nil
   ) {
     self.id = id
     self.vendor = vendor
     self.model = model
     self.vendorID = vendorID
     self.productIDs = productIDs
+    self.handshakeID = handshakeID
+    self.confidence = confidence
     self.family = family
     self.capabilities = capabilities
     self.layout = layout
@@ -105,6 +123,7 @@ public struct DeviceProfile: Codable, Sendable, Identifiable, Hashable {
 
   public var displayName: String { "\(vendor) \(model)" }
 
+  /// USB-level match. Only narrows candidates — see `handshakeID`.
   public func matches(vendorID: Int, productID: Int) -> Bool {
     self.vendorID == vendorID && productIDs.contains(productID)
   }

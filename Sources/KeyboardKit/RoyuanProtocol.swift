@@ -17,6 +17,8 @@ enum Proto {
   static let reportLen = 64
 
   static let opGetRev: UInt8 = 0x80
+  /// Whoami: replies with a little-endian u32 model id in bytes 1..4.
+  static let opGetDeviceID: UInt8 = 0x8F
   static let opGetKBOption: UInt8 = 0x86
   static let opSetKBOption: UInt8 = 0x06
   static let opSetLEDParam: UInt8 = 0x07

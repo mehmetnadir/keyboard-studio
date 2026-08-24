@@ -45,8 +45,13 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
 extension String {
   /// Localized lookup for strings built at runtime (formatted counts, etc.).
+  ///
+  /// Checks the main bundle first: that is where the .lproj folders live in a
+  /// built .app, and it is also what SwiftUI's `Text("key")` consults.
   var localized: String {
-    Bundle.module.localizedString(forKey: self, value: nil, table: nil)
+    let fromMain = Bundle.main.localizedString(forKey: self, value: nil, table: nil)
+    if fromMain != self { return fromMain }
+    return Bundle.module.localizedString(forKey: self, value: nil, table: nil)
   }
 
   func localized(_ arguments: any CVarArg...) -> String {

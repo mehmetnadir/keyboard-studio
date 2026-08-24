@@ -3,7 +3,11 @@
   "vendor": "Attack Shark",
   "model": "K86",
   "vendorID": 12625,
-  "productIDs": [16405],
+  "productIDs": [
+    16405
+  ],
+  "handshakeID": 1168,
+  "confidence": "confirmed",
   "family": "royuan",
   "layout": "ansi-75-knob",
   "capabilities": {

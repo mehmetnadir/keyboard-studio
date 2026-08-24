@@ -78,3 +78,24 @@
 /* Güvenli giriş */
 "stats.secure_input.title" = "Duraklatıldı — macOS girişini koruyor";
 "stats.secure_input.detail" = "Bir parola alanı etkin. macOS tuş olaylarını bu uygulama dahil hiçbir uygulamaya vermiyor.";
+
+/* Ayarlar */
+"tab.settings" = "Ayarlar";
+"settings.general" = "Genel";
+"settings.counting" = "Yazım istatistikleri";
+"settings.counting.enabled" = "Tuş basışlarını say";
+"settings.counting.detail" = "Yalnızca senin klavyen sayılır, o da sadece hangi tuşa kaç kez basıldığı olarak — sıra asla tutulmaz, metin asla kaydedilmez.";
+"settings.data_location" = "Verilerin";
+"settings.reveal" = "Finder'da göster";
+"settings.device" = "Klavye";
+"settings.device.model" = "Model";
+"settings.device.id" = "Profil";
+"settings.device.firmware" = "Yazılım sürümü";
+"settings.device.screen" = "Ekran";
+"settings.device.unverified" = "(doğrulanmadı)";
+"settings.device.add" = "Klavye ekle";
+"settings.device.add.detail" = "Başka bir klavyeyi desteklemek için bu klasöre bir cihaz profili bırak — yeniden derleme gerekmez. Ayrıntılar: ADDING-A-KEYBOARD.md.";
+"settings.about" = "Hakkında";
+"settings.about.version" = "Sürüm";
+"settings.about.source" = "GitHub'da kaynak kod";
+"settings.about.privacy" = "MIT lisanslı. Ağ erişimi yok, telemetri yok. Attack Shark veya ROYUAN ile bağlantılı değildir.";

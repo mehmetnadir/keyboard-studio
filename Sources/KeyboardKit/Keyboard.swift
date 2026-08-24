@@ -49,6 +49,28 @@ public final class Keyboard {
 
   // MARK: - Info
 
+  /// The model id the board reports to opcode 0x8F.
+  ///
+  /// This is the only reliable way to tell models apart in this family: one
+  /// USB vendor/product pair is reused across dozens of keyboards.
+  public func deviceID() throws -> Int? {
+    let f = try query([Proto.opGetDeviceID])
+    guard f.count > 4, f[0] == Proto.opGetDeviceID else { return nil }
+    return Int(f[1]) | Int(f[2]) << 8 | Int(f[3]) << 16 | Int(f[4]) << 24
+  }
+
+  /// Confirms the board really is the model this profile describes.
+  ///
+  /// Returns true when the profile declares no `handshakeID` (nothing to check)
+  /// or the board agrees. A mismatch means we are about to speak one model's
+  /// protocol to another — the documented cause of bricked keyboards in this
+  /// space — so callers should stop rather than continue.
+  public func verifyIdentity() throws -> Bool {
+    guard let expected = profile.handshakeID else { return true }
+    guard let reported = try deviceID() else { return false }
+    return reported == expected
+  }
+
   /// Firmware revision word as reported by the device (e.g. 0x0113).
   public func firmwareVersion() throws -> Int? {
     let f = try query([Proto.opGetRev])
