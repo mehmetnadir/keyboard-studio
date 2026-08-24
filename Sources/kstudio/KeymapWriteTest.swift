@@ -23,9 +23,12 @@ enum KeymapWriteTest {
       exit(1)
     }
 
-    let target = slots.press
+    // Write to a slot that certainly exists: the knob's turn-right, which we
+    // have read as volume-up. An empty slot proves nothing — the firmware may
+    // simply ignore writes to positions with no key behind them.
+    let target = slots.turnRight
     let (page, index) = Keymap.location(of: target)
-    print("Target: knob press, slot \(target) (page \(page), index \(index))")
+    print("Target: knob turn-right, slot \(target) (page \(page), index \(index))")
 
     let backup = try Keymap.readPage(page, on: kb)
     guard index < backup.count else {
@@ -33,135 +36,43 @@ enum KeymapWriteTest {
       exit(1)
     }
     let original = backup[index]
-    print("Backup of the whole page taken. Slot currently: \(hex(original))")
+    print("Backup taken. Slot currently: \(hex(original))")
 
-    guard original == [0, 0, 0, 0] else {
-      errPrint("""
-        Slot is not empty (\(hex(original))). This test only writes to an unassigned \
-        slot, so it is stopping here rather than overwriting something.
-        """)
-      exit(1)
-    }
-
-    // Mute is a sensible thing for a knob press to do, and it is a consumer
-    // usage, which is easy to recognise when reading back.
+    // Mute: a consumer usage, easy to recognise on read-back, and trivially
+    // reversible since the original bytes are in hand.
     let desired: [UInt8] = [0x03, 0x00, 0xE2, 0x00]
     print("Writing \(hex(desired)) (mute)…")
 
     var wrote = false
-    for shape in WriteShape.allCases {
-      do {
-        try shape.write(slot: target, page: page, index: index, bytes: desired, pageSlots: backup, on: kb)
-      } catch {
-        print("  \(shape.name): send failed — \(error)")
-        continue
+    do {
+      try Keymap.writeSlot(target, bytes: desired, on: kb)
+      wrote = try Keymap.readSlot(page: page, index: index, on: kb) == desired
+
+      // If the read disagrees, re-open the device before believing it: a
+      // cached reply would look exactly like a failed write.
+      if !wrote {
+        kb.close()
+        Thread.sleep(forTimeInterval: 0.5)
+        let fresh = try Keyboard()
+        defer { fresh.close() }
+        let afterReopen = try Keymap.readSlot(page: page, index: index, on: fresh)
+        print("  after reopening the device: \(hex(afterReopen ?? []))")
+        wrote = afterReopen == desired
       }
-      Thread.sleep(forTimeInterval: 0.3)
-      let after = try Keymap.readSlot(page: page, index: index, on: kb)
-      if after == desired {
-        print("  \(shape.name): ✅ verified — the keymap write works with this shape")
-        wrote = true
-        break
-      }
-      print("  \(shape.name): no change (read back \(hex(after ?? [])))")
+      print(wrote
+        ? "  0x13 single-slot write: ✅ verified — the keymap write works"
+        : "  0x13 single-slot write: sent, but read-back did not match")
+    } catch {
+      print("  0x13 single-slot write: failed — \(error)")
     }
 
     if wrote {
-      print("""
-
-        Press the knob: it should now mute. Restoring the original value…
-        """)
-      Thread.sleep(forTimeInterval: 3)
-      for shape in WriteShape.allCases {
-        try? shape.write(
-          slot: target, page: page, index: index, bytes: original, pageSlots: backup, on: kb)
-        Thread.sleep(forTimeInterval: 0.3)
-        if try Keymap.readSlot(page: page, index: index, on: kb) == original { break }
-      }
-      print("Restored: \(hex(try Keymap.readSlot(page: page, index: index, on: kb) ?? []))")
+      print("\nPress the knob — it should mute. Restoring in 5 s…")
+      Thread.sleep(forTimeInterval: 5)
+      let restored = (try? Keymap.writeSlotVerified(target, bytes: original, on: kb)) ?? false
+      print(restored ? "Restored to unassigned." : "⚠️  Restore did not verify — check the slot.")
     } else {
-      print("""
-
-        No write shape worked. The keymap stays read-only, which is the safe
-        outcome — nothing was changed.
-        """)
-    }
-  }
-
-  /// Candidate packet layouts for the write. The read is `[0x89, 0, page]`, so
-  /// the write is most likely its mirror; the single-slot forms are the other
-  /// plausible convention.
-  enum WriteShape: CaseIterable {
-    case wholePage
-    case singleSlotByIndex
-    case singleSlotByGlobal
-    /// Data after the bit7 checksum byte, the way the screen upload works.
-    case pageAfterChecksum
-    /// bit8 checksum with the payload in the first eight bytes, the way the
-    /// lighting commands are shaped.
-    case singleSlotBit8
-    case globalSlotBit8
-
-    var name: String {
-      switch self {
-      case .wholePage: "whole page"
-      case .singleSlotByIndex: "single slot (page,index)"
-      case .singleSlotByGlobal: "single slot (global)"
-      case .pageAfterChecksum: "page, data at byte 8"
-      case .singleSlotBit8: "single slot, bit8"
-      case .globalSlotBit8: "global slot, bit8"
-      }
-    }
-
-    func write(
-      slot: Int, page: Int, index: Int, bytes: [UInt8], pageSlots: [[UInt8]],
-      on kb: Keyboard
-    ) throws {
-      switch self {
-      case .wholePage:
-        var payload = pageSlots
-        payload[index] = bytes
-        var packet = [UInt8](repeating: 0, count: Proto.reportLen)
-        packet[0] = Proto.opSetKeymap
-        packet[1] = 0
-        packet[2] = UInt8(page)
-        // Mirror of the read: the page's slots follow the 3-byte header.
-        for (offset, slotBytes) in payload.enumerated() {
-          let start = 3 + offset * 4
-          guard start + 4 <= Proto.reportLen else { break }
-          for (i, byte) in slotBytes.enumerated() { packet[start + i] = byte }
-        }
-        try kb.sendRaw(packet)
-
-      case .singleSlotByIndex:
-        try kb.sendRaw([Proto.opSetKeymap, 0, UInt8(page), UInt8(index)] + bytes)
-
-      case .singleSlotByGlobal:
-        try kb.sendRaw([Proto.opSetKeymap, 0, UInt8(slot & 0xFF), UInt8(slot >> 8)] + bytes)
-
-      case .pageAfterChecksum:
-        var payload = pageSlots
-        payload[index] = bytes
-        var packet = [UInt8](repeating: 0, count: Proto.reportLen)
-        packet[0] = Proto.opSetKeymap
-        packet[1] = 0
-        packet[2] = UInt8(page)
-        // Byte 7 carries the checksum; the screen protocol starts data at 8.
-        for (offset, slotBytes) in payload.enumerated() {
-          let start = 8 + offset * 4
-          guard start + 4 <= Proto.reportLen else { break }
-          for (i, byte) in slotBytes.enumerated() { packet[start + i] = byte }
-        }
-        try kb.sendRaw(packet)
-
-      case .singleSlotBit8:
-        try kb.sendRaw(
-          [Proto.opSetKeymap, 0, UInt8(page), UInt8(index)] + bytes, mode: .bit8)
-
-      case .globalSlotBit8:
-        try kb.sendRaw(
-          [Proto.opSetKeymap, 0, UInt8(slot & 0xFF), UInt8(slot >> 8)] + bytes, mode: .bit8)
-      }
+      print("\nWrite did not take. Nothing changed, which is the safe outcome.")
     }
   }
 

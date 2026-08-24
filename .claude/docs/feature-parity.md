@@ -60,8 +60,13 @@ track a colour — from its album art where the player hands it over locally.
 
 ## Order of work
 
-1. Crack the keymap write — unblocks four features at once
-2. Onboard profile switching — cheap, independent
-3. Macros, layers (after 1)
-4. App-aware lighting profiles
-5. Screen gallery: bundled CC0 art plus a community repo
+1. ~~Crack the keymap write~~ — done
+2. Enable knob assignment and key remapping writes in the UI
+3. Macros (`0x16`, ids 0...49) and the Fn layer (`0x15`)
+4. Onboard profile switching (`0x05`)
+5. ~~App-aware lighting~~ — done
+6. Screen gallery: bundled CC0 art plus a community repo
+
+Also worth acting on: the vendor registry lists this board's panel as
+**240 x 135**, not the 128 x 128 we inherited from the reference
+implementation. Worth testing with `kstudio screen --bands --size 240x135`.

@@ -9,6 +9,10 @@ import StatsCore
 /// This command only reads.
 enum KeymapCommand {
   static func run(_ args: [String]) throws {
+    if args.contains("--restore-knob") {
+      try KeymapRestore.run()
+      return
+    }
     if args.contains("--test-write") {
       try KeymapWriteTest.run()
       return

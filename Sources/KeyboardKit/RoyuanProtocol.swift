@@ -21,8 +21,18 @@ public enum Proto {
   static let opGetDeviceID: UInt8 = 0x8F
   /// Keymap read. Slots are 4 bytes; byte 0 is the action type.
   public static let opGetKeymap: UInt8 = 0x89
-  /// Keymap write — NOT used yet. Writing the wrong slot remaps the wrong key.
+  /// Bulk keymap write: nine 56-byte chunks carrying the whole matrix.
   public static let opSetKeymap: UInt8 = 0x09
+  /// Single-slot keymap write — what the vendor's own UI uses for a key edit,
+  /// and far safer than rewriting the whole matrix to change one key.
+  public static let opSetKeymapSlot: UInt8 = 0x13
+  /// Selects the active onboard profile (the board holds three).
+  public static let opSetProfile: UInt8 = 0x05
+  /// Macro write; ids 0...49.
+  public static let opSetMacro: UInt8 = 0x16
+  public static let opGetMacro: UInt8 = 0x8B
+  /// Fn-layer single-slot write.
+  public static let opSetFnSlot: UInt8 = 0x15
   static let opGetKBOption: UInt8 = 0x86
   static let opSetKBOption: UInt8 = 0x06
   static let opSetLEDParam: UInt8 = 0x07
