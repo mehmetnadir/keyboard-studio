@@ -157,3 +157,24 @@
 "screen.color_from_artwork" = "Renk albüm kapağından";
 "screen.color_from_title" = "Renk parça adından";
 "screen.artwork_unavailable" = "%@ albüm kapağını yerel olarak vermiyor — bunu yalnızca Apple Music yapıyor, bu yüzden renk parça adından üretiliyor. Kapağı internetten indirmek, uygulamanın bilerek sahip olmadığı ağ erişimini gerektirirdi.";
+
+/* Boyama */
+"tab.paint" = "Boya";
+"paint.colour" = "Renk";
+"paint.apply_to_selection" = "Seçimi boya";
+"paint.clear_selection" = "Seçimi sil";
+"paint.clear_all" = "Hepsini temizle";
+"paint.palette" = "Palet";
+"paint.groups" = "Hızlı seçim";
+"paint.group.wasd" = "WASD";
+"paint.group.arrows" = "Yön tuşları";
+"paint.group.function" = "F sırası";
+"paint.group.numbers" = "Rakamlar";
+"paint.group.modifiers" = "Değiştirici tuşlar";
+"paint.select_all" = "Tümü";
+"paint.send" = "Klavyeye gönder";
+"paint.sending" = "Gönderiliyor — birkaç saniye sürüyor.";
+"paint.sent" = "Gönderildi. Klavye artık senin desenini gösteriyor.";
+"paint.cooldown" = "%lld sn sonra tekrar hazır";
+"paint.no_slots" = "Klavyenin tuş haritası okunamadı, boyanacak bir şey yok.";
+"paint.explainer" = "Renkler klavyenin kendi hafızasında saklanır ve bir ışık modu olarak gösterilir; kabloyu çıkarsan da kalır. Saklamak flash belleğe yazdığı için gönderimler on saniye arayla yapılır — istediğin gibi boya, sonra bir kez gönder.";

@@ -59,6 +59,13 @@ final class AppModel {
   var pendingShortcuts: [String: Shortcut] = [:]
   var keymapLoaded = false
 
+  // Per-key painting
+  /// Colours the user has painted, keyed by layout key id.
+  var paintedKeys: [String: Color3] = [:]
+  var paintStatus: String?
+  var paintCooldown: TimeInterval?
+  private let paintThrottle = PerKeyLighting.Throttle()
+
   // Knob
   var knobSlots: Knob.SlotMap?
   var knobBindings: [Knob.Action: Knob.Binding] = [:]
@@ -162,6 +169,8 @@ final class AppModel {
     refreshTimer = nil
     screenTimer?.invalidate()
     screenTimer = nil
+    paintCooldownTimer?.invalidate()
+    paintCooldownTimer = nil
     monitor?.stop()
     monitor = nil
     monitoringEnabled = false
@@ -214,6 +223,122 @@ final class AppModel {
       deviceError = String(describing: error)
       isConnected = false
     }
+  }
+
+  // MARK: - Painting
+
+  func paintedColor(for key: KeyboardLayout.Key) -> Color? {
+    paintedKeys[key.id].map { Color(red: $0.r, green: $0.g, blue: $0.b) }
+  }
+
+  func paint(keyIDs: Set<String>, color: Color?, in layout: KeyboardLayout) {
+    for id in keyIDs where layout.keys.contains(where: { $0.id == id }) {
+      if let color {
+        let resolved = NSColor(color).usingColorSpace(.sRGB) ?? .white
+        paintedKeys[id] = Color3(
+          Int(resolved.redComponent * 255), Int(resolved.greenComponent * 255),
+          Int(resolved.blueComponent * 255))
+      } else {
+        paintedKeys.removeValue(forKey: id)
+      }
+    }
+  }
+
+  func clearPainting() {
+    paintedKeys.removeAll()
+    paintStatus = nil
+  }
+
+  /// Sends the painted pattern to the keyboard.
+  ///
+  /// Runs off the main thread and takes about three seconds: the pages are
+  /// deliberately spaced and the firmware is given time to finish writing
+  /// flash. The ten-second cooldown afterwards is the protocol's, not ours.
+  func sendPainting(layout: KeyboardLayout) async {
+    let wait = paintThrottle.remainingWait()
+    guard wait == 0 else {
+      paintCooldown = wait
+      paintStatus = nil
+      return
+    }
+    guard let slotForKey = keySlotMap(layout: layout) else {
+      paintStatus = "paint.no_slots".localized
+      return
+    }
+
+    var pattern = PerKeyLighting.Pattern()
+    for (id, color) in paintedKeys {
+      guard let slot = slotForKey[id] else { continue }
+      pattern.colors[slot] = color.rgb
+    }
+    guard !pattern.colors.isEmpty else { return }
+
+    isUploading = true
+    paintStatus = "paint.sending".localized
+    defer { isUploading = false }
+
+    let throttle = paintThrottle
+    let brightnessValue = brightness
+    do {
+      try await Task.detached(priority: .userInitiated) {
+        let keyboard = try Keyboard()
+        defer { keyboard.close() }
+        try PerKeyLighting.upload(
+          pattern, brightness: brightnessValue, on: keyboard, throttle: throttle)
+      }.value
+      paintStatus = "paint.sent".localized
+      paintCooldown = PerKeyLighting.Pacing.betweenUploads
+      startPaintCooldownTimer()
+    } catch {
+      paintStatus = String(describing: error)
+    }
+  }
+
+  private var paintCooldownTimer: Timer?
+
+  /// Counts the protocol's ten-second cooldown down in the UI, so the Send
+  /// button's disabled state has a visible reason.
+  private func startPaintCooldownTimer() {
+    paintCooldownTimer?.invalidate()
+    paintCooldownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) {
+      [weak self] _ in
+      MainActor.assumeIsolated {
+        guard let model = self else { return }
+        let remaining = model.paintThrottle.remainingWait()
+        model.paintCooldown = remaining > 0 ? remaining : nil
+        if remaining <= 0 {
+          model.paintCooldownTimer?.invalidate()
+          model.paintCooldownTimer = nil
+        }
+      }
+    }
+  }
+
+  /// Maps drawn keys to keymap slots by matching HID usages against the board's
+  /// own keymap — so the LED index comes from the device, not a hard-coded
+  /// table that could be wrong for a variant.
+  private func keySlotMap(layout: KeyboardLayout) -> [String: Int]? {
+    var usageToSlot: [Int: Int] = [:]
+    var found = false
+    withDevice { keyboard in
+      for page in 0..<8 {
+        let slots = try Keymap.readPage(page, on: keyboard)
+        for (index, bytes) in slots.enumerated() where bytes[0] == 0x00 && bytes[2] != 0 {
+          let usage = Int(bytes[2])
+          let slot = Keymap.globalSlot(page: page, index: index)
+          if usageToSlot[usage] == nil { usageToSlot[usage] = slot }
+        }
+      }
+      found = !usageToSlot.isEmpty
+    }
+    guard found else { return nil }
+
+    var map: [String: Int] = [:]
+    for key in layout.keys {
+      guard let usage = key.usage, let slot = usageToSlot[usage] else { continue }
+      map[key.id] = slot
+    }
+    return map.isEmpty ? nil : map
   }
 
   // MARK: - Shortcuts

@@ -11,7 +11,7 @@ struct KeyboardCanvas: View {
   let layout: KeyboardLayout
   @Binding var selection: Set<String>
   /// Colour for a key, when the page wants to tint them (painting, heatmap).
-  var tint: ((KeyboardLayout.Key) -> Color)?
+  var tint: ((KeyboardLayout.Key) -> Color?)?
   /// Small caption under a key's label, e.g. its assigned shortcut.
   var caption: ((KeyboardLayout.Key) -> String?)?
   var onDoubleClick: ((KeyboardLayout.Key) -> Void)?
@@ -82,7 +82,7 @@ struct KeyboardCanvas: View {
 
   private func background(for key: KeyboardLayout.Key, selected: Bool) -> AnyShapeStyle {
     if selected { return AnyShapeStyle(.tint) }
-    if let tint = tint?(key) { return AnyShapeStyle(tint) }
+    if let painted = tint?(key), painted != .clear { return AnyShapeStyle(painted) }
     return AnyShapeStyle(Color.secondary.opacity(key.isKnob ? 0.28 : 0.16))
   }
 
