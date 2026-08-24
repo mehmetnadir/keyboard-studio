@@ -9,6 +9,8 @@ public enum DeviceError: Error, CustomStringConvertible {
   case screenHandshakeFailed
   case invalidFrame(String)
   case imageDecodeFailed
+  case identityMismatch
+  case rateLimited(seconds: TimeInterval)
 
   public var description: String {
     switch self {
@@ -26,6 +28,13 @@ public enum DeviceError: Error, CustomStringConvertible {
       "Invalid screen frame: \(reason)."
     case .imageDecodeFailed:
       "Could not decode the image."
+    case .identityMismatch:
+      "The connected keyboard is not the model this profile describes — refusing to write to it."
+    case .rateLimited(let seconds):
+      """
+      Too soon — per-key colour is written to the keyboard's flash, so uploads \
+      are spaced out. Try again in \(Int(seconds.rounded(.up))) s.
+      """
     }
   }
 
