@@ -1,7 +1,39 @@
 import SwiftUI
 
+/// Brings the window up on launch and when the Dock icon is clicked.
+///
+/// An app that also has a MenuBarExtra can finish launching with no window
+/// showing, which looks exactly like the app opening and immediately quitting.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    presentMainWindow()
+  }
+
+  /// Clicking the Dock icon when no window is open should reopen it, which is
+  /// the standard behaviour and not automatic here.
+  func applicationShouldHandleReopen(
+    _ sender: NSApplication, hasVisibleWindows: Bool
+  ) -> Bool {
+    if !hasVisibleWindows { presentMainWindow() }
+    return true
+  }
+
+  private func presentMainWindow() {
+    NSApp.setActivationPolicy(.regular)
+    NSApp.activate(ignoringOtherApps: true)
+    // The scene may not have materialised yet at launch; one runloop turn is
+    // enough for it to exist.
+    DispatchQueue.main.async {
+      if let window = NSApp.windows.first(where: { $0.canBecomeMain }) {
+        window.makeKeyAndOrderFront(nil)
+      }
+    }
+  }
+}
+
 @main
 struct KeyboardStudioApp: App {
+  @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
   @State private var model = AppModel()
 
 
