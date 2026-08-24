@@ -52,6 +52,12 @@ final class AppModel {
   var screenHeightText = ""
   var screenSaveMessage: String?
 
+  // Keymap / shortcuts
+  /// Pending shortcut assignments, keyed by layout key id. Held in the app
+  /// until the keymap write path is verified on hardware.
+  var pendingShortcuts: [String: Shortcut] = [:]
+  var keymapLoaded = false
+
   // Knob
   var knobSlots: Knob.SlotMap?
   var knobBindings: [Knob.Action: Knob.Binding] = [:]
@@ -191,6 +197,29 @@ final class AppModel {
       deviceError = String(describing: error)
       isConnected = false
     }
+  }
+
+  // MARK: - Shortcuts
+
+  /// Reads the board's current keymap so assigned keys can be shown.
+  func loadKeymap() {
+    guard isConnected, !keymapLoaded else { return }
+    keymapLoaded = true
+    // Reading is safe and already verified; writing is not enabled yet.
+    withDevice { keyboard in
+      _ = try Keymap.readPage(0, on: keyboard)
+    }
+  }
+
+  func assignShortcut(_ shortcut: Shortcut, toKeyIDs ids: Set<String>, in layout: KeyboardLayout) {
+    for id in ids where layout.keys.contains(where: { $0.id == id }) {
+      pendingShortcuts[id] = shortcut
+    }
+  }
+
+  func assignedShortcutLabel(for key: KeyboardLayout.Key) -> String? {
+    guard let shortcut = pendingShortcuts[key.id] else { return nil }
+    return shortcut.modifiers.symbols + KeyLabels.name(for: shortcut.usage)
   }
 
   // MARK: - Screen geometry

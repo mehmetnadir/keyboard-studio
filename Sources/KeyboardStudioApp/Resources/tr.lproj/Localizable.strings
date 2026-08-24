@@ -131,3 +131,15 @@
 "screen.size.tested" = "Gönderildi. Klavyeye bak: bantlar paneli tam doldurmalı.";
 "screen.size.saved" = "Kaydedildi ve doğrulandı olarak işaretlendi.";
 "screen.size.save_failed" = "Profil yazılamadı.";
+
+/* Kısayollar */
+"tab.shortcuts" = "Kısayollar";
+"shortcuts.pick_a_key" = "Yukarıdaki klavyeden bir tuş seç. Shift ekler, Option çıkarır, sürükleyerek grup seçebilirsin.";
+"shortcuts.selected" = "Seçili: %@";
+"shortcuts.clear_selection" = "Temizle";
+"shortcuts.ready_made" = "Hazır macOS kısayolları";
+"shortcuts.custom" = "Özel kombinasyon";
+"shortcuts.key_placeholder" = "tuş";
+"shortcuts.assign" = "Ata";
+"shortcuts.custom_hint" = "Tek bir harf ya da rakam yaz; ya da Space için 0x2C gibi ham bir kod gir.";
+"shortcuts.write_pending" = "Atamalar şimdilik burada tutuluyor. Klavyeye yazılması, keymap yazma komutu donanımda kanıtlanana kadar açılmayacak — yanlış bir slot gerçek bir tuşu sessizce değiştirir.";

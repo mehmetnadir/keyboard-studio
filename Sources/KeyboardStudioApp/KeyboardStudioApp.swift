@@ -26,12 +26,13 @@ struct MainView: View {
   @State private var tab = Tab.stats
 
   enum Tab: String, CaseIterable {
-    case stats, lights, knob, screen, settings
+    case stats, lights, shortcuts, knob, screen, settings
 
     var title: LocalizedStringKey {
       switch self {
       case .stats: "tab.statistics"
       case .lights: "tab.lights"
+      case .shortcuts: "tab.shortcuts"
       case .knob: "tab.knob"
       case .screen: "tab.screen"
       case .settings: "tab.settings"
@@ -42,6 +43,7 @@ struct MainView: View {
       switch self {
       case .stats: "chart.bar.fill"
       case .lights: "lightbulb.fill"
+      case .shortcuts: "command"
       case .knob: "dial.medium.fill"
       case .screen: "photo.fill"
       case .settings: "gearshape.fill"
@@ -56,6 +58,7 @@ struct MainView: View {
           switch item {
           case .stats: StatsView()
           case .lights: LightsView()
+          case .shortcuts: ShortcutsView()
           case .knob: KnobView()
           case .screen: ScreenView()
           case .settings: SettingsView()
