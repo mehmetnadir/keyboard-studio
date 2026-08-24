@@ -161,11 +161,11 @@
 /* Painting */
 "tab.paint" = "Paint";
 "paint.colour" = "Colour";
-"paint.apply_to_selection" = "Paint selection";
-"paint.clear_selection" = "Erase selection";
+"paint.eraser" = "Eraser";
+"paint.fill_group" = "Fill a group";
 "paint.clear_all" = "Clear all";
-"paint.palette" = "Palette";
-"paint.groups" = "Quick selections";
+"paint.hint" = "Drag across the keys to paint them.";
+"paint.painted_count" = "%lld keys painted";
 "paint.group.wasd" = "WASD";
 "paint.group.arrows" = "Arrows";
 "paint.group.function" = "F row";
@@ -177,4 +177,4 @@
 "paint.sent" = "Sent. The keyboard is showing your pattern.";
 "paint.cooldown" = "Ready again in %lld s";
 "paint.no_slots" = "Could not read the keyboard's key map, so there is nothing to paint onto.";
-"paint.explainer" = "Colours are stored in the keyboard's own memory and shown as a lighting mode, so they stay after unplugging. Because storing them writes to flash, sending is spaced ten seconds apart — paint freely, then send once.";
+

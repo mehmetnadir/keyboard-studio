@@ -161,11 +161,11 @@
 /* Boyama */
 "tab.paint" = "Boya";
 "paint.colour" = "Renk";
-"paint.apply_to_selection" = "Seçimi boya";
-"paint.clear_selection" = "Seçimi sil";
+"paint.eraser" = "Silgi";
+"paint.fill_group" = "Grubu doldur";
 "paint.clear_all" = "Hepsini temizle";
-"paint.palette" = "Palet";
-"paint.groups" = "Hızlı seçim";
+"paint.hint" = "Boyamak için tuşların üzerinde sürükle.";
+"paint.painted_count" = "%lld tuş boyandı";
 "paint.group.wasd" = "WASD";
 "paint.group.arrows" = "Yön tuşları";
 "paint.group.function" = "F sırası";
@@ -177,4 +177,4 @@
 "paint.sent" = "Gönderildi. Klavye artık senin desenini gösteriyor.";
 "paint.cooldown" = "%lld sn sonra tekrar hazır";
 "paint.no_slots" = "Klavyenin tuş haritası okunamadı, boyanacak bir şey yok.";
-"paint.explainer" = "Renkler klavyenin kendi hafızasında saklanır ve bir ışık modu olarak gösterilir; kabloyu çıkarsan da kalır. Saklamak flash belleğe yazdığı için gönderimler on saniye arayla yapılır — istediğin gibi boya, sonra bir kez gönder.";
+

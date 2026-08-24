@@ -8,8 +8,20 @@ import SwiftUI
 /// user already has — click replaces, ⇧ adds, ⌥ removes, ⌘ toggles, drag makes
 /// a marquee — so nothing here has to be learned.
 struct KeyboardCanvas: View {
+  /// How the pointer behaves over the keys.
+  enum Interaction {
+    /// Build a selection, then act on it — used where an action needs a target
+    /// chosen first, like assigning a shortcut.
+    case select
+    /// Act on each key the pointer touches, straight away — a brush.
+    case paint
+  }
+
   let layout: KeyboardLayout
   @Binding var selection: Set<String>
+  var interaction: Interaction = .select
+  /// Called for every key the brush touches, once per key per stroke.
+  var onPaint: ((KeyboardLayout.Key) -> Void)?
   /// Colour for a key, when the page wants to tint them (painting, heatmap).
   var tint: ((KeyboardLayout.Key) -> Color?)?
   /// Small caption under a key's label, e.g. its assigned shortcut.
@@ -19,6 +31,9 @@ struct KeyboardCanvas: View {
   @State private var dragStart: CGPoint?
   @State private var dragCurrent: CGPoint?
   @State private var selectionAtDragStart: Set<String> = []
+  /// Keys already painted in the current stroke, so dragging across one does
+  /// not repaint it on every pointer sample.
+  @State private var strokeTouched: Set<String> = []
 
   private let unit: CGFloat = 44
   private let gap: CGFloat = 3
@@ -42,7 +57,8 @@ struct KeyboardCanvas: View {
     }
     .frame(width: width, height: height, alignment: .topLeading)
     .contentShape(Rectangle())
-    .gesture(marqueeGesture)
+    .gesture(brushGesture, isEnabled: interaction == .paint)
+    .gesture(marqueeGesture, isEnabled: interaction == .select)
     .padding(8)
     .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
   }
@@ -77,7 +93,13 @@ struct KeyboardCanvas: View {
     .foregroundStyle(isSelected ? .white : .primary)
     .offset(x: rect.minX, y: rect.minY)
     .onTapGesture(count: 2) { onDoubleClick?(key) }
-    .onTapGesture { toggle(key) }
+    .onTapGesture {
+      if interaction == .paint {
+        onPaint?(key)
+      } else {
+        toggle(key)
+      }
+    }
   }
 
   private func background(for key: KeyboardLayout.Key, selected: Bool) -> AnyShapeStyle {
@@ -114,6 +136,23 @@ struct KeyboardCanvas: View {
     return CGRect(
       x: min(start.x, current.x), y: min(start.y, current.y),
       width: abs(current.x - start.x), height: abs(current.y - start.y))
+  }
+
+  /// Paints continuously while the pointer is down, like dragging a brush.
+  /// `minimumDistance: 0` makes a plain press paint immediately rather than
+  /// waiting to see whether it becomes a drag.
+  private var brushGesture: some Gesture {
+    DragGesture(minimumDistance: 0)
+      .onChanged { value in
+        guard let key = key(at: value.location), !strokeTouched.contains(key.id) else { return }
+        strokeTouched.insert(key.id)
+        onPaint?(key)
+      }
+      .onEnded { _ in strokeTouched.removeAll() }
+  }
+
+  private func key(at point: CGPoint) -> KeyboardLayout.Key? {
+    layout.keys.first { frame(for: $0).contains(point) }
   }
 
   private var marqueeGesture: some Gesture {
