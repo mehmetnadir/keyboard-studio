@@ -80,8 +80,16 @@ Spotify answer Apple Events, and YouTube Music is read from the browser tab's
 title. macOS will ask your permission the first time, per app.
 
 This reads a title, an artist and how far through the track you are. It does
-not read anything else from those apps, and it does not reach the internet:
-album art is deliberately not fetched, which is also why the card is text.
+not read anything else from those apps, and it does not reach the internet.
+
+If you turn on "match the lighting to the track" and you are using **Apple
+Music**, the app also reads that track's album art — Apple Music hands the
+image over directly, so it is sampled for its dominant colour and the file is
+deleted immediately. The image never leaves your Mac and is never uploaded
+anywhere. Spotify exposes only a *link* to its art, and following that link
+would need network access this app does not have, so Spotify and YouTube Music
+get a colour derived from the track's name instead.
+
 Turning the screen mode off stops the asking entirely.
 
 ## Verify it yourself

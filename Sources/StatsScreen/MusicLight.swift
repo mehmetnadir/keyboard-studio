@@ -22,13 +22,35 @@ public enum MusicLight {
   /// How often the colour may be refreshed. Deliberately conservative.
   public static let updateInterval: TimeInterval = 2.0
 
-  /// A stable colour for a track.
+  /// Where a track's colour came from, so the UI can say which it got.
+  public enum ColorOrigin: Sendable, Equatable {
+    /// Sampled from the album art the player handed over locally.
+    case artwork
+    /// Derived from the title, because this player exposes no local art.
+    case title
+  }
+
+  /// The track's colour, preferring its album art.
   ///
-  /// Album art would be the obvious source, but fetching it needs network
-  /// access the app does not have. Deriving the hue from the title instead
-  /// gives every track its own identity, and the same track always gets the
-  /// same colour — which reads as intentional rather than random.
+  /// Apple Music returns art as raw data, so sampling it costs nothing and
+  /// needs no network. Other players expose at most a URL, which would mean an
+  /// HTTP fetch this app cannot make — those fall back to the title.
   public static func color(
+    for playing: NowPlaying, drift: Double = 0
+  ) -> (color: RGB, origin: ColorOrigin) {
+    if Artwork.isAvailable(for: playing.source),
+      let art = Artwork.current(for: playing.source),
+      let dominant = Artwork.dominantColor(of: art) {
+      return (RGB(dominant.r, dominant.g, dominant.b), .artwork)
+    }
+    return (titleColor(for: playing, drift: drift), .title)
+  }
+
+  /// A stable colour derived from the track's name.
+  ///
+  /// The same track always gets the same colour, which reads as intentional
+  /// rather than random.
+  public static func titleColor(
     for playing: NowPlaying, drift: Double = 0, saturation: Double = 0.85
   ) -> RGB {
     let base = hue(for: playing.title + playing.artist)

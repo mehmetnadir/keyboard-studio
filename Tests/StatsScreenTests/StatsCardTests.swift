@@ -58,13 +58,13 @@ import Testing
 @Suite struct MusicLightTests {
   @Test func sameTrackAlwaysGetsTheSameColour() {
     let track = NowPlaying(title: "Song", artist: "Artist", source: .spotify)
-    #expect(MusicLight.color(for: track) == MusicLight.color(for: track))
+    #expect(MusicLight.titleColor(for: track) == MusicLight.titleColor(for: track))
   }
 
   @Test func differentTracksGetDifferentColours() {
     let a = NowPlaying(title: "One", artist: "Artist", source: .spotify)
     let b = NowPlaying(title: "Two", artist: "Artist", source: .spotify)
-    #expect(MusicLight.color(for: a) != MusicLight.color(for: b))
+    #expect(MusicLight.titleColor(for: a) != MusicLight.titleColor(for: b))
   }
 
   @Test func driftStaysWithinASixthOfTheWheel() {

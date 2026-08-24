@@ -70,6 +70,10 @@ final class AppModel {
   }
   var screenStatus: String?
   var nowPlaying: NowPlaying?
+  /// Which effect the track's colour is applied with.
+  var musicEffect: LightEffect = .solid
+  /// Whether the last colour came from album art or from the title.
+  var musicColorFromArtwork = false
   /// Tie the lighting to the track as well as the screen.
   var lightFollowsMusic = false {
     didSet {
@@ -411,11 +415,18 @@ final class AppModel {
     guard let playing else { return }
 
     lastLightSync = Date()
-    let color = MusicLight.color(
+    let result = MusicLight.color(
       for: playing, drift: MusicLight.drift(progress: playing.progress))
-    mainColor = Color3(Int(color.r), Int(color.g), Int(color.b))
-    effect = .solid
+    musicColorFromArtwork = result.origin == .artwork
+    mainColor = Color3(Int(result.color.r), Int(result.color.g), Int(result.color.b))
+    effect = musicEffect
     applyMainLight()
+  }
+
+  /// True when the player that is running can hand over album art locally.
+  var artworkAvailable: Bool {
+    guard let source = nowPlaying?.source else { return false }
+    return Artwork.isAvailable(for: source)
   }
 
   /// Only uploads when the track actually changed — the panel write takes about

@@ -153,3 +153,7 @@
 "screen.nothing_playing" = "Şu an bir şey çalmıyor.";
 "screen.light_follows_music" = "Işığı çalan parçaya uydur";
 "screen.light_follows_music.detail" = "Her parçanın kendi rengi olur ve çaldıkça yavaşça kayar. Ritme senkron bir görselleştirici değil: klavyenin yazılımı ışık komutlarını hız sınırına tabi tutuyor, daha hızlı göndermek klavyeyi kabloyu çıkarıp takana kadar yanıt veremez hale getiriyor.";
+"screen.music_effect" = "Efekt";
+"screen.color_from_artwork" = "Renk albüm kapağından";
+"screen.color_from_title" = "Renk parça adından";
+"screen.artwork_unavailable" = "%@ albüm kapağını yerel olarak vermiyor — bunu yalnızca Apple Music yapıyor, bu yüzden renk parça adından üretiliyor. Kapağı internetten indirmek, uygulamanın bilerek sahip olmadığı ağ erişimini gerektirirdi.";

@@ -58,8 +58,11 @@ struct ScreenView: View {
           .font(.caption)
           .foregroundStyle(.tertiary)
         if model.screenMode == .nowPlaying {
+          Divider().padding(.vertical, 2)
           Toggle("screen.light_follows_music", isOn: $model.lightFollowsMusic)
-            .padding(.top, 2)
+          if model.lightFollowsMusic {
+            musicLightOptions
+          }
           Text("screen.light_follows_music.detail")
             .font(.caption)
             .foregroundStyle(.tertiary)
@@ -83,6 +86,47 @@ struct ScreenView: View {
         DisconnectedOverlay()
       }
     }
+  }
+
+  /// Where the colour comes from, and which effect carries it. Shown together
+  /// because the source is not a setting — it depends on the player — while the
+  /// effect is entirely the user's choice.
+  @ViewBuilder private var musicLightOptions: some View {
+    @Bindable var model = model
+
+    HStack(spacing: 8) {
+      Text("screen.music_effect")
+        .foregroundStyle(.secondary)
+      Picker("", selection: $model.musicEffect) {
+        ForEach(musicEffects, id: \.self) { effect in
+          Text(effect.rawValue.capitalized).tag(effect)
+        }
+      }
+      .labelsHidden()
+      .frame(width: 150)
+      Spacer()
+      if let playing = model.nowPlaying {
+        Label(
+          model.musicColorFromArtwork
+            ? "screen.color_from_artwork" : "screen.color_from_title",
+          systemImage: model.musicColorFromArtwork ? "photo.fill" : "textformat")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .help(Text(playing.source.rawValue))
+      }
+    }
+
+    if let playing = model.nowPlaying, !model.artworkAvailable {
+      Text("screen.artwork_unavailable \(playing.source.rawValue)")
+        .font(.caption)
+        .foregroundStyle(.tertiary)
+    }
+  }
+
+  /// Effects that read well as a single track colour. Rainbow-driven ones are
+  /// left out: they would override the colour the track chose.
+  private var musicEffects: [KeyboardKit.LightEffect] {
+    [.solid, .breath, .press, .ripple, .raindrop, .sine]
   }
 
   private var dropTarget: some View {

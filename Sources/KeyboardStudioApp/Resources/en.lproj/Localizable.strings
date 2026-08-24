@@ -153,3 +153,7 @@
 "screen.nothing_playing" = "Nothing playing right now.";
 "screen.light_follows_music" = "Match the lighting to the track";
 "screen.light_follows_music.detail" = "Each track gets its own colour, drifting slowly as it plays. Not a beat-synced visualiser: the keyboard's firmware rate-limits lighting commands, and pushing them faster stops it responding until it is re-plugged.";
+"screen.music_effect" = "Effect";
+"screen.color_from_artwork" = "Colour from album art";
+"screen.color_from_title" = "Colour from track name";
+"screen.artwork_unavailable" = "%@ does not hand over album art locally — only Apple Music does, so the colour comes from the track name instead. Fetching art from the internet would need network access this app deliberately does not have.";
