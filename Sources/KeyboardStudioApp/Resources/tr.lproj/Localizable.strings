@@ -1,0 +1,72 @@
+/* Sekmeler */
+"tab.statistics" = "İstatistik";
+"tab.lights" = "Işıklar";
+"tab.screen" = "Ekran";
+
+/* Bağlantı */
+"device.connected" = "K86 bağlı";
+"device.disconnected" = "Bağlı değil";
+"device.connect_cable.title" = "USB kablosunu tak";
+"device.connect_cable.detail" = "Işık ve ekran ayarları USB üzerinden yazılır. Klavyenin arkasındaki anahtarları Mac + USB konumuna al.";
+
+/* İstatistik */
+"stats.counting_off.title" = "Sayım kapalı";
+"stats.counting_off.detail" = "Yalnızca K86 klavyen sayılır, o da sadece hangi tuşa kaç kez basıldığı olarak.";
+"stats.start_counting" = "Saymaya başla";
+"stats.stop" = "Durdur";
+"stats.not_detected.title" = "Sayım açık ama K86 görünmüyor";
+"stats.not_detected.detail" = "Klavye bağlanana kadar hiçbir şey sayılmayacak.";
+"stats.lifetime" = "tuşa basıldı, tüm zamanlar";
+"stats.today" = "Bugün";
+"stats.this_month" = "Bu ay";
+"stats.this_year" = "Bu yıl";
+"stats.active_minutes" = "%lld dk aktif";
+"stats.peak_hour" = "En yoğun saat";
+"stats.peak_hour.detail" = "en çok yazdığın zaman";
+"stats.current_streak" = "Güncel seri";
+"stats.longest_streak" = "En uzun seri";
+"stats.streak.day" = "gün";
+"stats.streak.days" = "gün üst üste";
+"stats.streak.days_short" = "gün";
+"stats.busiest_day" = "En yoğun gün";
+"stats.busiest_day.detail" = "%@ basış";
+"stats.champions" = "Bu ayın şampiyonları";
+"stats.champions.empty" = "Bu ay henüz basış kaydedilmedi.";
+"stats.presses_today" = "basış bugün";
+
+/* Işıklar */
+"lights.main" = "Ana ışık";
+"lights.side" = "Yan şeritler";
+"lights.levels" = "Seviyeler";
+"lights.colour" = "Renk";
+"lights.effect" = "Efekt";
+"lights.rainbow" = "Gökkuşağı renkleri";
+"lights.apply" = "Uygula";
+"lights.brightness" = "Parlaklık";
+"lights.speed" = "Efekt hızı";
+"lights.off" = "Işıkları kapat";
+"lights.on" = "Işıkları aç";
+
+/* Ekran */
+"screen.drop_here" = "Görsel veya GIF'i buraya bırak";
+"screen.choose_file" = "Görsel ya da GIF seç…";
+"screen.mode.crop" = "Kırp";
+"screen.mode.fit" = "Sığdır";
+"screen.mode.stretch" = "Uzat";
+"screen.uploading" = "Yükleniyor — uzun bir GIF 20 saniyeyi bulabilir.";
+"screen.uploaded" = "Klavyeye yüklendi.";
+"screen.unreadable" = "Bu dosya okunamadı.";
+"screen.show_stats" = "Bugünün istatistiğini klavye ekranında göster";
+"screen.show_stats.detail" = "Uygulama açıkken 5 dakikada bir yenilenir.";
+"screen.updated" = "Güncellendi %@";
+"screen.connect_to_update" = "Ekranı güncellemek için kabloyu tak.";
+"screen.panel_info" = "Panel 65 536 renk gösterir. GIF'ler en fazla 30 kare olarak yüklenir.";
+
+/* Menü çubuğu */
+"menu.open" = "Keyboard Studio'yu aç";
+"menu.quit" = "Çık";
+"menu.language" = "Dil";
+"menu.language.system" = "Sistem";
+"menu.language.english" = "English";
+"menu.language.turkish" = "Türkçe";
+"menu.language.restart_note" = "Uygulama yeniden başlatılınca geçerli olur.";

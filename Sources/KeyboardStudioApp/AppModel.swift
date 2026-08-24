@@ -199,7 +199,7 @@ final class AppModel {
 
   func pushStatsToScreen() async {
     guard let store, K86.isConnected else {
-      screenStatus = "Connect the cable to update the screen."
+      screenStatus = "screen.connect_to_update".localized
       return
     }
     do {
@@ -210,7 +210,8 @@ final class AppModel {
         defer { keyboard.close() }
         try Screen.writeImage(card, on: keyboard)
       }.value
-      screenStatus = "Updated \(Date().formatted(date: .omitted, time: .shortened))"
+      screenStatus = "screen.updated".localized(
+        Date().formatted(date: .omitted, time: .shortened))
     } catch {
       screenStatus = String(describing: error)
     }

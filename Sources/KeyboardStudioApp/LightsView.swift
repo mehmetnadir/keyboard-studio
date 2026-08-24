@@ -8,44 +8,44 @@ struct LightsView: View {
     @Bindable var model = model
 
     Form {
-      Section("Main light") {
-        ColorPicker("Colour", selection: colorBinding(for: \.mainColor), supportsOpacity: false)
-        Picker("Effect", selection: $model.effect) {
+      Section("lights.main") {
+        ColorPicker("lights.colour", selection: colorBinding(for: \.mainColor), supportsOpacity: false)
+        Picker("lights.effect", selection: $model.effect) {
           ForEach(LightEffect.allCases, id: \.self) { effect in
             Text(effect.rawValue.capitalized).tag(effect)
           }
         }
         if model.effect != .solid {
-          Toggle("Rainbow colours", isOn: $model.rainbow)
+          Toggle("lights.rainbow", isOn: $model.rainbow)
         }
-        Button("Apply") { model.applyMainLight() }
+        Button("lights.apply") { model.applyMainLight() }
           .disabled(!model.isConnected)
       }
 
-      Section("Side strips") {
-        ColorPicker("Colour", selection: colorBinding(for: \.sideColor), supportsOpacity: false)
-        Button("Apply") { model.applySideLight() }
+      Section("lights.side") {
+        ColorPicker("lights.colour", selection: colorBinding(for: \.sideColor), supportsOpacity: false)
+        Button("lights.apply") { model.applySideLight() }
           .disabled(!model.isConnected)
       }
 
-      Section("Levels") {
+      Section("lights.levels") {
         Slider(value: brightnessBinding, in: 0...4, step: 1) {
-          Text("Brightness")
+          Text("lights.brightness")
         } minimumValueLabel: {
           Image(systemName: "sun.min")
         } maximumValueLabel: {
           Image(systemName: "sun.max")
         }
         Slider(value: speedBinding, in: 0...5, step: 1) {
-          Text("Effect speed")
+          Text("lights.speed")
         } minimumValueLabel: {
           Image(systemName: "tortoise")
         } maximumValueLabel: {
           Image(systemName: "hare")
         }
         HStack {
-          Button("Lights off") { model.setLEDs(on: false) }
-          Button("Lights on") { model.setLEDs(on: true) }
+          Button("lights.off") { model.setLEDs(on: false) }
+          Button("lights.on") { model.setLEDs(on: true) }
         }
         .disabled(!model.isConnected)
       }
@@ -92,9 +92,9 @@ struct DisconnectedOverlay: View {
       Image(systemName: "cable.connector.slash")
         .font(.largeTitle)
         .foregroundStyle(.secondary)
-      Text("Connect the USB cable")
+      Text("device.connect_cable.title")
         .font(.headline)
-      Text("Lighting and screen settings are written over USB. Set the switches on the back to Mac + USB.")
+      Text("device.connect_cable.detail")
         .font(.callout)
         .foregroundStyle(.secondary)
         .multilineTextAlignment(.center)

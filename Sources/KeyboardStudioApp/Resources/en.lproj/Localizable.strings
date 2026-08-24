@@ -1,0 +1,72 @@
+/* Tabs */
+"tab.statistics" = "Statistics";
+"tab.lights" = "Lights";
+"tab.screen" = "Screen";
+
+/* Connection */
+"device.connected" = "K86 connected";
+"device.disconnected" = "Not connected";
+"device.connect_cable.title" = "Connect the USB cable";
+"device.connect_cable.detail" = "Lighting and screen settings are written over USB. Set the switches on the back to Mac + USB.";
+
+/* Statistics */
+"stats.counting_off.title" = "Counting is off";
+"stats.counting_off.detail" = "Only your K86 is counted, and only how many times each key was pressed.";
+"stats.start_counting" = "Start counting";
+"stats.stop" = "Stop";
+"stats.not_detected.title" = "Counting is on, but no K86 is visible";
+"stats.not_detected.detail" = "Nothing will be counted until the keyboard is connected.";
+"stats.lifetime" = "keys pressed, all time";
+"stats.today" = "Today";
+"stats.this_month" = "This month";
+"stats.this_year" = "This year";
+"stats.active_minutes" = "%lld active min";
+"stats.peak_hour" = "Peak hour";
+"stats.peak_hour.detail" = "when you type most";
+"stats.current_streak" = "Current streak";
+"stats.longest_streak" = "Longest streak";
+"stats.streak.day" = "day";
+"stats.streak.days" = "days in a row";
+"stats.streak.days_short" = "days";
+"stats.busiest_day" = "Busiest day";
+"stats.busiest_day.detail" = "%@ presses";
+"stats.champions" = "This month's champions";
+"stats.champions.empty" = "No presses recorded yet this month.";
+"stats.presses_today" = "presses today";
+
+/* Lights */
+"lights.main" = "Main light";
+"lights.side" = "Side strips";
+"lights.levels" = "Levels";
+"lights.colour" = "Colour";
+"lights.effect" = "Effect";
+"lights.rainbow" = "Rainbow colours";
+"lights.apply" = "Apply";
+"lights.brightness" = "Brightness";
+"lights.speed" = "Effect speed";
+"lights.off" = "Lights off";
+"lights.on" = "Lights on";
+
+/* Screen */
+"screen.drop_here" = "Drop an image or GIF here";
+"screen.choose_file" = "Choose image or GIF…";
+"screen.mode.crop" = "Crop";
+"screen.mode.fit" = "Fit";
+"screen.mode.stretch" = "Stretch";
+"screen.uploading" = "Uploading — a long GIF can take up to 20 seconds.";
+"screen.uploaded" = "Uploaded to the keyboard.";
+"screen.unreadable" = "Could not read that file.";
+"screen.show_stats" = "Show today's statistics on the keyboard";
+"screen.show_stats.detail" = "Refreshes every 5 minutes while the app is running.";
+"screen.updated" = "Updated %@";
+"screen.connect_to_update" = "Connect the cable to update the screen.";
+"screen.panel_info" = "The panel shows 65 536 colours. GIFs upload up to 30 frames.";
+
+/* Menu bar */
+"menu.open" = "Open Keyboard Studio";
+"menu.quit" = "Quit";
+"menu.language" = "Language";
+"menu.language.system" = "System";
+"menu.language.english" = "English";
+"menu.language.turkish" = "Türkçe";
+"menu.language.restart_note" = "Applies after restarting the app.";

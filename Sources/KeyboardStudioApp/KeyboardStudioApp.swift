@@ -26,9 +26,15 @@ struct MainView: View {
   @State private var tab = Tab.stats
 
   enum Tab: String, CaseIterable {
-    case stats = "Statistics"
-    case lights = "Lights"
-    case screen = "Screen"
+    case stats, lights, screen
+
+    var title: LocalizedStringKey {
+      switch self {
+      case .stats: "tab.statistics"
+      case .lights: "tab.lights"
+      case .screen: "tab.screen"
+      }
+    }
 
     var icon: String {
       switch self {
@@ -49,7 +55,7 @@ struct MainView: View {
           case .screen: ScreenView()
           }
         }
-        .tabItem { Label(item.rawValue, systemImage: item.icon) }
+        .tabItem { Label(item.title, systemImage: item.icon) }
         .tag(item)
       }
     }
@@ -90,7 +96,7 @@ struct MenuBarView: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(model.today?.presses ?? 0, format: .number)
           .font(.system(size: 26, weight: .semibold, design: .rounded))
-        Text("presses today")
+        Text("stats.presses_today")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -114,11 +120,13 @@ struct MenuBarView: View {
         }
       }
       Divider()
-      Button("Open Keyboard Studio") {
+      LanguagePicker()
+      Divider()
+      Button("menu.open") {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.windows.first { $0.canBecomeMain }?.makeKeyAndOrderFront(nil)
       }
-      Button("Quit") {
+      Button("menu.quit") {
         model.shutDown()  // flush pending counts before the process goes away
         NSApp.terminate(nil)
       }
@@ -126,6 +134,31 @@ struct MenuBarView: View {
     .padding(14)
     .frame(width: 240)
     .onAppear { model.refreshStats() }
+  }
+
+  private struct LanguagePicker: View {
+    @State private var selection = AppLanguage.current
+    @State private var changed = false
+
+    var body: some View {
+      VStack(alignment: .leading, spacing: 4) {
+        Picker("menu.language", selection: $selection) {
+          ForEach(AppLanguage.allCases) { language in
+            Text(language.label).tag(language)
+          }
+        }
+        .pickerStyle(.menu)
+        .onChange(of: selection) { _, newValue in
+          AppLanguage.apply(newValue)
+          changed = true
+        }
+        if changed {
+          Text("menu.language.restart_note")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+      }
+    }
   }
 
   private var quickColors: [(name: String, color: Color3)] {

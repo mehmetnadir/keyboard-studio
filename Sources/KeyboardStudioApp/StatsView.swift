@@ -37,14 +37,14 @@ struct StatsView: View {
         .font(.title2)
         .foregroundStyle(.secondary)
       VStack(alignment: .leading, spacing: 2) {
-        Text("Counting is off")
+        Text("stats.counting_off.title")
           .font(.headline)
-        Text("Only your K86 is counted, and only how many times each key was pressed.")
+        Text("stats.counting_off.detail")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
       Spacer()
-      Button("Start counting") { model.startMonitoring() }
+      Button("stats.start_counting") { model.startMonitoring() }
         .buttonStyle(.borderedProminent)
     }
     .padding(14)
@@ -57,14 +57,14 @@ struct StatsView: View {
         .font(.title2)
         .foregroundStyle(.orange)
       VStack(alignment: .leading, spacing: 2) {
-        Text("Counting is on, but no K86 is visible")
+        Text("stats.not_detected.title")
           .font(.headline)
-        Text("Nothing will be counted until the keyboard is connected.")
+        Text("stats.not_detected.detail")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
       Spacer()
-      Button("Stop") { model.stopMonitoring() }
+      Button("stats.stop") { model.stopMonitoring() }
     }
     .padding(14)
     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
@@ -75,7 +75,7 @@ struct StatsView: View {
       Text(model.lifetimeTotal, format: .number)
         .font(.system(size: 44, weight: .semibold, design: .rounded))
         .contentTransition(.numericText())
-      Text("keys pressed, all time")
+      Text("stats.lifetime")
         .font(.subheadline)
         .foregroundStyle(.secondary)
     }
@@ -84,14 +84,14 @@ struct StatsView: View {
   private var cards: some View {
     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
       StatCard(
-        title: "Today", value: model.today?.presses ?? 0,
-        detail: "\(model.today?.activeMinutes ?? 0) active min")
-      StatCard(title: "This month", value: model.monthTotal, detail: nil)
-      StatCard(title: "This year", value: model.yearTotal, detail: nil)
+        title: "stats.today", value: model.today?.presses ?? 0,
+        detail: "stats.active_minutes".localized(model.today?.activeMinutes ?? 0))
+      StatCard(title: "stats.this_month", value: model.monthTotal, detail: nil)
+      StatCard(title: "stats.this_year", value: model.yearTotal, detail: nil)
       if let peak = model.records?.peakHour {
         StatCard(
-          title: "Peak hour", text: String(format: "%02d:00", peak),
-          detail: "when you type most")
+          title: "stats.peak_hour", text: String(format: "%02d:00", peak),
+          detail: "stats.peak_hour.detail".localized)
       }
     }
   }
@@ -99,24 +99,25 @@ struct StatsView: View {
   private func streaks(_ records: Records) -> some View {
     HStack(spacing: 12) {
       StatCard(
-        title: "Current streak", text: "\(records.currentStreak)",
-        detail: records.currentStreak == 1 ? "day" : "days in a row")
+        title: "stats.current_streak", text: "\(records.currentStreak)",
+        detail: (records.currentStreak == 1 ? "stats.streak.day" : "stats.streak.days").localized)
       StatCard(
-        title: "Longest streak", text: "\(records.longestStreak)", detail: "days")
+        title: "stats.longest_streak", text: "\(records.longestStreak)",
+        detail: "stats.streak.days_short".localized)
       if let busiest = records.busiestDay {
         StatCard(
-          title: "Busiest day", text: busiest.day,
-          detail: "\(busiest.presses.formatted()) presses")
+          title: "stats.busiest_day", text: busiest.day,
+          detail: "stats.busiest_day.detail".localized(busiest.presses.formatted()))
       }
     }
   }
 
   private var champions: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text("This month's champions")
+      Text("stats.champions")
         .font(.headline)
       if model.monthChampions.isEmpty {
-        Text("No presses recorded yet this month.")
+        Text("stats.champions.empty")
           .font(.callout)
           .foregroundStyle(.secondary)
       } else {
@@ -130,18 +131,19 @@ struct StatsView: View {
 }
 
 private struct StatCard: View {
-  let title: String
+  let title: LocalizedStringKey
   var value: Int?
   var text: String?
+  /// Already-localized text (these carry interpolated numbers).
   let detail: String?
 
-  init(title: String, value: Int, detail: String?) {
+  init(title: LocalizedStringKey, value: Int, detail: String?) {
     self.title = title
     self.value = value
     self.detail = detail
   }
 
-  init(title: String, text: String, detail: String?) {
+  init(title: LocalizedStringKey, text: String, detail: String?) {
     self.title = title
     self.text = text
     self.detail = detail
@@ -152,6 +154,7 @@ private struct StatCard: View {
       Text(title)
         .font(.caption)
         .foregroundStyle(.secondary)
+        .lineLimit(1)
       Group {
         if let value {
           Text(value, format: .number)

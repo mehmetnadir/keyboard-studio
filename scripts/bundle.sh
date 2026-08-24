@@ -18,6 +18,12 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/Keyboard Studio"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 
+# SwiftPM keeps localizations in its own resource bundle, which Bundle.module
+# looks for next to the executable. Without this the UI falls back to raw keys.
+for bundle in "$ROOT/.build/$CONFIG"/*.bundle; do
+  [ -e "$bundle" ] && cp -R "$bundle" "$APP/Contents/MacOS/"
+done
+
 # Ad-hoc signature with the sandbox entitlements. --deep is deliberately not
 # used (Apple discourages it); there is one binary and it is signed in place.
 # Re-signing changes the identity, so macOS may ask for permission again.

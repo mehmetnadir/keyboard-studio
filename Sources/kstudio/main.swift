@@ -52,6 +52,7 @@ func usage() -> Never {
       kstudio screen --stats                show today's typing stats on the keyboard
       kstudio effects                       list effect names
       kstudio probe                         ask the device about itself (read-only)
+      kstudio measure                       find the panel's real resolution
       kstudio stats                         typing statistics summary
       kstudio watch [seconds]               count presses live (needs Input Monitoring)
       kstudio card <out.png> [--demo]       preview the keyboard screen card as PNG
@@ -87,6 +88,9 @@ do {
 
   case "probe":
     try ProbeCommand.run()
+
+  case "measure":
+    try MeasureCommand.run(args)
 
   case "info":
     let kb = try K86()
@@ -150,16 +154,40 @@ do {
     if args[1] == "--test" {
       try Screen.writeImage(Screen.testPattern(), on: kb)
       print("Test pattern uploaded.")
-    } else if args[1] == "--ruler" {
-      try Screen.writeImage(Screen.rulerPattern(), on: kb)
-      print(
-        """
-        Calibration pattern uploaded (assuming \(Screen.width)×\(Screen.height)).
-        Look at the keyboard:
-          • white border touching all four edges  → the size is correct
-          • image in one corner with dead space   → the panel is larger
-          • edges cut off                          → the panel is smaller
-        """)
+    } else if args[1] == "--ruler" || args[1] == "--bands" {
+      // Optional WxH so the real panel size can be discovered by trying sizes.
+      var frameWidth = Screen.width
+      var frameHeight = Screen.height
+      if let size = option("--size", args) {
+        let parts = size.lowercased().split(separator: "x").compactMap { Int($0) }
+        guard parts.count == 2, parts.allSatisfy({ (8...512).contains($0) }) else {
+          fail("--size expects WxH, e.g. 160x128")
+        }
+        (frameWidth, frameHeight) = (parts[0], parts[1])
+      }
+      let frame = args[1] == "--bands"
+        ? Screen.bandPattern(width: frameWidth, height: frameHeight)
+        : Screen.rulerPattern(width: frameWidth, height: frameHeight)
+      try Screen.writeImage(frame, on: kb)
+      if args[1] == "--bands" {
+        print(
+          """
+          Colour bands uploaded at \(frameWidth)×\(frameHeight), 32 px per band.
+          Count the bands along the top edge and down the left edge:
+            width  = bands across × 32
+            height = bands down × 32
+          Skewed or wrapped bands mean the height guess is wrong.
+          """)
+      } else {
+        print(
+          """
+          Calibration pattern uploaded at \(frameWidth)×\(frameHeight).
+          Look at the keyboard:
+            • white border touching all four edges  → the size is correct
+            • image in one corner with dead space   → the panel is larger
+            • edges cut off                          → the panel is smaller
+          """)
+      }
     } else if args[1] == "--stats" {
       let store = try StatsStore(path: StatsStore.defaultPath())
       defer { store.close() }

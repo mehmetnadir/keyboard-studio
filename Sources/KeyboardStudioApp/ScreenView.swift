@@ -18,11 +18,11 @@ struct ScreenView: View {
     VStack(spacing: 16) {
       dropTarget
       HStack {
-        Button("Choose image or GIF…") { chooseFile() }
+        Button("screen.choose_file") { chooseFile() }
         Picker("", selection: $mode) {
-          Text("Crop").tag(ScreenFit.fill)
-          Text("Fit").tag(ScreenFit.fit)
-          Text("Stretch").tag(ScreenFit.stretch)
+          Text("screen.mode.crop").tag(ScreenFit.fill)
+          Text("screen.mode.fit").tag(ScreenFit.fit)
+          Text("screen.mode.stretch").tag(ScreenFit.stretch)
         }
         .pickerStyle(.segmented)
         .frame(width: 190)
@@ -33,7 +33,7 @@ struct ScreenView: View {
       if model.isUploading {
         HStack(spacing: 8) {
           ProgressView().controlSize(.small)
-          Text("Uploading — a long GIF can take up to 20 seconds.")
+          Text("screen.uploading")
             .font(.callout)
             .foregroundStyle(.secondary)
         }
@@ -46,8 +46,8 @@ struct ScreenView: View {
       Divider()
 
       VStack(alignment: .leading, spacing: 6) {
-        Toggle("Show today's statistics on the keyboard", isOn: $model.screenShowsStats)
-        Text("Refreshes every 5 minutes while the app is running.")
+        Toggle("screen.show_stats", isOn: $model.screenShowsStats)
+        Text("screen.show_stats.detail")
           .font(.caption)
           .foregroundStyle(.tertiary)
         if let screenStatus = model.screenStatus {
@@ -95,7 +95,7 @@ struct ScreenView: View {
             Image(systemName: "photo.badge.arrow.down")
               .font(.largeTitle)
               .foregroundStyle(.secondary)
-            Text("Drop an image or GIF here")
+            Text("screen.drop_here")
               .foregroundStyle(.secondary)
           }
         }
@@ -103,7 +103,7 @@ struct ScreenView: View {
       .frame(width: 220, height: 220)
       .dropDestination(for: URL.self) { urls, _ in
         guard let url = urls.first else {
-          status = "Could not read that file."
+          status = "screen.unreadable".localized
           return false
         }
         Task { await upload(url) }
@@ -124,6 +124,6 @@ struct ScreenView: View {
     preview = NSImage(contentsOf: url)
     status = "Uploading…"
     await model.uploadScreen(url: url, mode: mode)
-    status = model.deviceError ?? "Uploaded to the keyboard."
+    status = model.deviceError ?? "screen.uploaded".localized
   }
 }

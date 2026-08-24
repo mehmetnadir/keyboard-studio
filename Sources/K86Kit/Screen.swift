@@ -2,15 +2,25 @@ import CoreGraphics
 import Foundation
 import ImageIO
 
-/// One 128×128 frame for the K86's TFT screen.
+/// One frame for the K86's TFT screen.
+///
+/// Carries its own dimensions: the panel's real resolution is not something the
+/// protocol reports (the firmware accepts a write handshake for any size), so
+/// it must stay configurable rather than baked in as a constant.
 public struct ScreenFrame: Sendable {
   /// Row-major RGB bytes, `(y * width + x) * 3`.
   public var rgb: [UInt8]
+  public var width: Int
+  public var height: Int
   /// GIF frame delay in ~10 ms units (0 for static images).
   public var delayByte: UInt8
 
-  public init(rgb: [UInt8], delayByte: UInt8 = 0) {
+  public init(
+    rgb: [UInt8], width: Int = Screen.width, height: Int = Screen.height, delayByte: UInt8 = 0
+  ) {
     self.rgb = rgb
+    self.width = width
+    self.height = height
     self.delayByte = delayByte
   }
 }
@@ -49,13 +59,34 @@ public enum Screen {
 
   // MARK: - Upload
 
-  public static func writeImage(_ frame: ScreenFrame, layer: UInt8 = 0, on kb: K86) throws {
+  /// Uploads a frame, optionally at an offset inside the panel.
+  ///
+  /// The protocol's target rectangle is what makes panel measurement possible:
+  /// drawing a known-good tile at increasing offsets shows where the panel ends.
+  public static func writeImage(
+    _ frame: ScreenFrame, at origin: (x: Int, y: Int) = (0, 0), layer: UInt8 = 0, on kb: K86
+  ) throws {
     try validate(frame)
-    let bytes = encode565(frame.rgb)
+    let bytes = encode565(frame.rgb, width: frame.width, height: frame.height)
     guard try canWrite(
-      kb, byteLength: bytes.count, frameIndex: layer, allFrames: 1, delay: 0, layer: layer)
+      kb, byteLength: bytes.count, frameIndex: layer, allFrames: 1, delay: 0, layer: layer,
+      left: origin.x, top: origin.y,
+      right: origin.x + frame.width, bottom: origin.y + frame.height)
     else { throw K86Error.screenHandshakeFailed }
     try sendChunks(kb, bytes, frameIndex: layer, allFrames: 1, delay: 0)
+  }
+
+  /// Fills `width`×`height` with one colour — the tile used for measuring.
+  public static func solid(_ color: (UInt8, UInt8, UInt8), width: Int, height: Int)
+    -> ScreenFrame
+  {
+    var rgb = [UInt8](repeating: 0, count: width * height * 3)
+    for pixel in 0..<(width * height) {
+      rgb[pixel * 3] = color.0
+      rgb[pixel * 3 + 1] = color.1
+      rgb[pixel * 3 + 2] = color.2
+    }
+    return ScreenFrame(rgb: rgb, width: width, height: height)
   }
 
   public static func writeAnimation(_ frames: [ScreenFrame], on kb: K86) throws {
@@ -77,10 +108,10 @@ public enum Screen {
   }
 
   private static func validate(_ frame: ScreenFrame) throws {
-    let expected = width * height * 3
+    let expected = frame.width * frame.height * 3
     guard frame.rgb.count == expected else {
       throw K86Error.invalidFrame(
-        "expected \(width)×\(height) RGB (\(expected) bytes), got \(frame.rgb.count)")
+        "expected \(frame.width)×\(frame.height) RGB (\(expected) bytes), got \(frame.rgb.count)")
     }
   }
 
@@ -99,8 +130,8 @@ public enum Screen {
 
   private static func canWrite(
     _ kb: K86, byteLength: Int, frameIndex: UInt8, allFrames: UInt8,
-    delay: UInt8, layer: UInt8, right: Int = Screen.width, bottom: Int = Screen.height,
-    retries: Int = 10
+    delay: UInt8, layer: UInt8, left: Int = 0, top: Int = 0,
+    right: Int = Screen.width, bottom: Int = Screen.height, retries: Int = 10
   ) throws -> Bool {
     var s = [UInt8](repeating: 0, count: Proto.reportLen)
     s[0] = opCanWrite
@@ -110,12 +141,12 @@ public enum Screen {
     s[4] = UInt8(byteLength & 0xFF)
     s[5] = UInt8((byteLength >> 8) & 0xFF)
     // Target rectangle: left, top, right, bottom — low bytes then high bytes.
-    s[8] = 0
-    s[9] = 0
+    s[8] = UInt8(left & 0xFF)
+    s[9] = UInt8(top & 0xFF)
     s[10] = UInt8(right & 0xFF)
     s[11] = UInt8(bottom & 0xFF)
-    s[12] = 0
-    s[13] = 0
+    s[12] = UInt8(left >> 8)
+    s[13] = UInt8(top >> 8)
     s[14] = UInt8(right >> 8)
     s[15] = UInt8(bottom >> 8)
     s[16] = UInt8((byteLength >> 16) & 0xFF)
@@ -161,7 +192,9 @@ public enum Screen {
   }
 
   /// Row-major RGB → column-major RGB565 big-endian (panel's native order).
-  static func encode565(_ rgb: [UInt8]) -> [UInt8] {
+  static func encode565(
+    _ rgb: [UInt8], width: Int = Screen.width, height: Int = Screen.height
+  ) -> [UInt8] {
     var out = [UInt8]()
     out.reserveCapacity(width * height * 2)
     for x in 0..<width {
@@ -262,7 +295,9 @@ public enum Screen {
   /// resolution is to send a frame whose edges are visible and look at it. If
   /// the border touches all four edges, the assumed size is correct; if the
   /// image sits in a corner with dead space around it, the panel is larger.
-  public static func rulerPattern() -> ScreenFrame {
+  public static func rulerPattern(width: Int = Screen.width, height: Int = Screen.height)
+    -> ScreenFrame
+  {
     var rgb = [UInt8](repeating: 0, count: width * height * 3)
     func set(_ x: Int, _ y: Int, _ color: (UInt8, UInt8, UInt8)) {
       guard x >= 0, x < width, y >= 0, y < height else { return }
@@ -287,7 +322,37 @@ public enum Screen {
         set(width - 12 + x, height - 12 + y, (255, 220, 0))
       }
     }
-    return ScreenFrame(rgb: rgb)
+    return ScreenFrame(rgb: rgb, width: width, height: height)
+  }
+
+  /// Colour bands every `step` pixels: count the bands you can see and multiply
+  /// by `step` to get the panel's real width and height. The top row runs left
+  /// to right, the left column runs top to bottom, in the same colour order.
+  public static func bandPattern(
+    width: Int = Screen.width, height: Int = Screen.height, step: Int = 32
+  ) -> ScreenFrame {
+    let palette: [(UInt8, UInt8, UInt8)] = [
+      (255, 60, 60), (255, 170, 40), (255, 240, 60), (70, 220, 90),
+      (60, 190, 235), (90, 110, 255), (200, 90, 230), (255, 255, 255),
+    ]
+    var rgb = [UInt8](repeating: 0, count: width * height * 3)
+    for y in 0..<height {
+      for x in 0..<width {
+        let band: (UInt8, UInt8, UInt8)
+        if y < step {
+          band = palette[(x / step) % palette.count]  // horizontal ruler
+        } else if x < step {
+          band = palette[(y / step) % palette.count]  // vertical ruler
+        } else {
+          // Faint checkerboard so wrapping errors show up as a skew.
+          let dark = ((x / step) + (y / step)) % 2 == 0
+          band = dark ? (18, 18, 22) : (34, 34, 42)
+        }
+        let i = (y * width + x) * 3
+        (rgb[i], rgb[i + 1], rgb[i + 2]) = band
+      }
+    }
+    return ScreenFrame(rgb: rgb, width: width, height: height)
   }
 
   /// Red / green / blue / white quadrants — device test without an image file.

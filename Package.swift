@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
   name: "keyboard-studio",
+  defaultLocalization: "en",
   platforms: [.macOS(.v14)],
   products: [
     .library(name: "K86Kit", targets: ["K86Kit"]),
@@ -15,7 +16,9 @@ let package = Package(
     .target(name: "StatsCore"),
     .target(name: "StatsScreen", dependencies: ["K86Kit", "StatsCore"]),
     .executableTarget(name: "kstudio", dependencies: ["K86Kit", "StatsCore", "StatsScreen"]),
-    .executableTarget(name: "KeyboardStudioApp", dependencies: ["K86Kit", "StatsCore", "StatsScreen"]),
+    .executableTarget(
+      name: "KeyboardStudioApp", dependencies: ["K86Kit", "StatsCore", "StatsScreen"],
+      resources: [.process("Resources")]),
     .testTarget(name: "K86KitTests", dependencies: ["K86Kit"]),
     .testTarget(name: "StatsCoreTests", dependencies: ["StatsCore"]),
     .testTarget(name: "StatsScreenTests", dependencies: ["StatsScreen"]),
