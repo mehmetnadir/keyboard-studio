@@ -113,7 +113,7 @@
 "knob.storage" = "Assignments live in the keyboard's own keymap, so they survive unplugging and work without this app.";
 "knob.slots_detail" = "Keymap slots %lld / %lld / %lld.";
 "knob.identity_mismatch" = "The connected keyboard does not match this profile — not touching its keymap.";
-"knob.write_pending" = "Shown only: writing knob assignments to the keyboard is not enabled yet — the keymap write command still needs verifying on hardware, and a wrong slot would remap a real key.";
+"knob.write_failed" = "The keyboard did not accept that change — the previous setting has been put back.";
 
 /* Permission */
 "stats.open_settings" = "Open System Settings";

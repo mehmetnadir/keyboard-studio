@@ -89,6 +89,7 @@ final class AppModel {
   var knobSlots: Knob.SlotMap?
   var knobBindings: [Knob.Action: Knob.Binding] = [:]
   var knobError: String?
+  var knobBusy = false
 
   /// What the keyboard screen is showing while the app runs.
   var screenMode: ScreenMode = .off {
@@ -488,13 +489,37 @@ final class AppModel {
     }
   }
 
-  /// Changing a binding is not wired to the device yet: the keymap *write*
-  /// command has not been confirmed on hardware, and writing a wrong slot
-  /// remaps a real key. The picker updates what is shown; applying it comes
-  /// once the write path is verified.
+  /// Writes a knob action to the keyboard.
+  ///
+  /// The write is verified by re-opening the device, because a read on the
+  /// same connection returns a cached reply and would report success either
+  /// way. On failure the previous binding is put back on screen, so the UI
+  /// never claims something the keyboard did not accept.
   func setKnob(action: Knob.Action, mediaCode: Int?) {
-    knobBindings[action] = mediaCode.map { Knob.Binding.media(code: $0) } ?? .unassigned
-    knobError = "knob.write_pending".localized
+    guard let slots = knobSlots else { return }
+    let previous = knobBindings[action] ?? .unassigned
+    let binding = mediaCode.map { Knob.Binding.media(code: $0) } ?? .unassigned
+    knobBindings[action] = binding
+    knobError = nil
+    knobBusy = true
+
+    let slot = slots.slot(for: action)
+    let bytes = binding.slotBytes
+    Task { [weak self] in
+      let verified = await Task.detached(priority: .userInitiated) { () -> Bool in
+        guard let keyboard = try? Keyboard() else { return false }
+        return (try? Keymap.writeSlotVerified(slot, bytes: bytes, on: keyboard)) ?? false
+      }.value
+
+      guard let self else { return }
+      knobBusy = false
+      if verified {
+        knobError = nil
+      } else {
+        knobBindings[action] = previous
+        knobError = "knob.write_failed".localized
+      }
+    }
   }
 
   // MARK: - Lighting actions

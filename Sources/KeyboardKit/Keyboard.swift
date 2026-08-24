@@ -94,13 +94,22 @@ public final class Keyboard {
   /// Sends an arbitrary read command and returns the raw reply, for protocol
   /// exploration. Read-only by convention — callers must not pass write opcodes.
   public func probeRaw(_ cmd: [UInt8], mode: ChecksumModeSelector = .bit7) throws -> [UInt8] {
-    try query(cmd, mode: mode == .bit7 ? .bit7 : .bit8)
+    if let opcode = cmd.first, DangerousCommands.isBlocked(opcode) {
+      throw DeviceError.blockedCommand(opcode: opcode)
+    }
+    return try query(cmd, mode: mode == .bit7 ? .bit7 : .bit8)
   }
 
-  /// Sends a raw command for protocol work that has not yet been wrapped in a
-  /// typed API — currently the keymap write, which is still being proven.
+  /// Sends a raw command for protocol work not yet wrapped in a typed API.
   /// Ordinary features should not call this.
+  ///
+  /// Destructive opcodes are refused here rather than in the callers: this is
+  /// the one place every raw command passes through, so it is the only place
+  /// the guarantee actually holds.
   public func sendRaw(_ cmd: [UInt8], mode: ChecksumModeSelector = .bit7) throws {
+    if let opcode = cmd.first, DangerousCommands.isBlocked(opcode) {
+      throw DeviceError.blockedCommand(opcode: opcode)
+    }
     try sendFeature(cmd, mode: mode == .bit7 ? .bit7 : .bit8)
   }
 

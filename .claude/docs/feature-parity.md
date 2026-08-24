@@ -58,6 +58,37 @@ flash with a ten-second floor. A beat-synced strobe is not a feature we have
 not built; it is one the hardware refuses. What we do instead is give each
 track a colour — from its album art where the player hands it over locally.
 
+## Device settings — protocol mapped (2026-08-24)
+
+From the vendor's own client, with the safe/dangerous split verified against
+our probe output.
+
+| Setting | Read | Write | Notes |
+|---|---|---|---|
+| Active profile | `[0x85]` → byte 1 | `[0x05, n]` | 3 profiles; ours reads 0 |
+| Debounce | `[0x81]` → byte 2 | `[0x11, 0, ms]` | 0–10 ms for this board |
+| Sleep timers | `[0x92]` | `[0x12]` + four LE16 | seconds; 60–3600, 0 = never |
+| Win/Mac | `[0x86]` → byte 2 bit 1 | — | read-only; the physical switch drives it |
+| Polling rate | — | — | not exposed on this model |
+
+Confirmed against hardware: `0x85` returns profile 0, and `0x86` byte 2 is
+`0x02` — bit 1 set — which matches the board being in Mac mode. Key maps and
+Fn maps are per-profile; lighting, debounce and sleep are global.
+
+**The screen is 240 x 135**, stated in the vendor's device record for id 1168.
+The 128 x 128 we inherited from the reference implementation was wrong.
+
+### Dangerous commands — now blocked in code
+
+The protocol puts destructive operations next to harmless ones: factory reset
+is `0x02`, and a full flash erase is `0xAC` — inside the 0x80+ range that
+otherwise holds only reads, and it blocks for ~55 seconds. Our old probe swept
+0x80–0x8F blindly, which came within four opcodes of it.
+
+`DangerousCommands` now refuses these at the transport, which is the one place
+every raw command passes through. The probe uses a verified-safe list instead
+of a range. Four tests cover it.
+
 ## Order of work
 
 1. ~~Crack the keymap write~~ — done

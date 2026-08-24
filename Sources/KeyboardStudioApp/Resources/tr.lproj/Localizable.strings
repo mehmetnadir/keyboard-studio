@@ -113,7 +113,7 @@
 "knob.storage" = "Atamalar klavyenin kendi hafızasında tutulur; kabloyu çıkarsan da kalır, bu uygulama kapalıyken de çalışır.";
 "knob.slots_detail" = "Keymap slotları %lld / %lld / %lld.";
 "knob.identity_mismatch" = "Bağlı klavye bu profille eşleşmiyor — keymap'ine dokunulmuyor.";
-"knob.write_pending" = "Şimdilik yalnızca gösteriliyor: atamaların klavyeye yazılması henüz açık değil — keymap yazma komutu donanımda doğrulanmadı ve yanlış slot gerçek bir tuşu değiştirir.";
+"knob.write_failed" = "Klavye bu değişikliği kabul etmedi — önceki ayar geri yüklendi.";
 
 /* İzin */
 "stats.open_settings" = "Sistem Ayarları'nı aç";

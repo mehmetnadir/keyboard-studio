@@ -11,9 +11,9 @@ enum ProbeCommand {
     let kb = try Keyboard()
     defer { kb.close() }
 
-    print("Device queries (read-only opcodes 0x80–0x8F)")
+    print("Device queries (read-only opcodes known safe on this family)")
     print(String(repeating: "─", count: 62))
-    for opcode in UInt8(0x80)...UInt8(0x8F) {
+    for opcode in DangerousCommands.safeToProbe {
       guard let response = try? kb.probe(opcode: opcode) else {
         print(String(format: "  0x%02X  <no response>", opcode))
         continue

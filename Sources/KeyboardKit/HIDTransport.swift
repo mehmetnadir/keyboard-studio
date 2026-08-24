@@ -11,6 +11,7 @@ public enum DeviceError: Error, CustomStringConvertible {
   case imageDecodeFailed
   case identityMismatch
   case rateLimited(seconds: TimeInterval)
+  case blockedCommand(opcode: UInt8)
 
   public var description: String {
     switch self {
@@ -30,6 +31,11 @@ public enum DeviceError: Error, CustomStringConvertible {
       "Could not decode the image."
     case .identityMismatch:
       "The connected keyboard is not the model this profile describes — refusing to write to it."
+    case .blockedCommand(let opcode):
+      """
+      Refusing to send command \(String(format: "0x%02X", opcode)): it erases \
+      stored data or enters the bootloader.
+      """
     case .rateLimited(let seconds):
       """
       Too soon — per-key colour is written to the keyboard's flash, so uploads \

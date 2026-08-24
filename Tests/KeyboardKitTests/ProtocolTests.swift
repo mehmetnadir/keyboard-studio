@@ -95,3 +95,31 @@ import Testing
     #expect(pixel(127, 127) == (255, 255, 255))
   }
 }
+
+@Suite struct SafetyTests {
+  @Test func destructiveOpcodesAreBlocked() {
+    // The two that would actually cost the user something.
+    #expect(DangerousCommands.isBlocked(0xAC))  // flash erase, ~55 s
+    #expect(DangerousCommands.isBlocked(0x02))  // factory reset
+    #expect(DangerousCommands.isBlocked(0x01))  // factory reset, other lineage
+    #expect(DangerousCommands.isBlocked(0x43))  // bootloader
+  }
+
+  @Test func ordinaryCommandsAreNotBlocked() {
+    #expect(!DangerousCommands.isBlocked(0x07))  // lighting
+    #expect(!DangerousCommands.isBlocked(0x13))  // single-slot keymap write
+    #expect(!DangerousCommands.isBlocked(0x89))  // keymap read
+  }
+
+  @Test func probeSetContainsNoBlockedOpcode() {
+    for opcode in DangerousCommands.safeToProbe {
+      #expect(!DangerousCommands.isBlocked(opcode))
+    }
+  }
+
+  @Test func flashWritersAreFlaggedButNotBlocked() {
+    // These are legitimate features; they just must never be swept.
+    #expect(DangerousCommands.flashWriting.contains(0x0C))
+    #expect(!DangerousCommands.isBlocked(0x0C))
+  }
+}

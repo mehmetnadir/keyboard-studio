@@ -97,7 +97,11 @@ private struct KnobActionRow: View {
       }
       .labelsHidden()
       .frame(width: 190)
-      .disabled(!model.isConnected)
+      .disabled(!model.isConnected || model.knobBusy)
+
+      if model.knobBusy {
+        ProgressView().controlSize(.small)
+      }
     }
     .padding(14)
     .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 11))
