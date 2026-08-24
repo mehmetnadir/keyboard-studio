@@ -30,7 +30,14 @@ struct ScreenView: View {
       }
       .disabled(!model.isConnected)
 
-      if let status {
+      if model.isUploading {
+        HStack(spacing: 8) {
+          ProgressView().controlSize(.small)
+          Text("Uploading — a long GIF can take up to 20 seconds.")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+        }
+      } else if let status {
         Text(status)
           .font(.callout)
           .foregroundStyle(.secondary)
@@ -94,14 +101,14 @@ struct ScreenView: View {
         }
       }
       .frame(width: 220, height: 220)
-      .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
-        guard let provider = providers.first else { return false }
-        _ = provider.loadObject(ofClass: URL.self) { url, _ in
-          guard let url else { return }
-          Task { @MainActor in upload(url) }
+      .dropDestination(for: URL.self) { urls, _ in
+        guard let url = urls.first else {
+          status = "Could not read that file."
+          return false
         }
+        Task { await upload(url) }
         return true
-      }
+      } isTargeted: { isTargeted = $0 }
   }
 
   private func chooseFile() {
@@ -109,14 +116,14 @@ struct ScreenView: View {
     panel.allowedContentTypes = [.png, .jpeg, .gif, .image]
     panel.allowsMultipleSelection = false
     if panel.runModal() == .OK, let url = panel.url {
-      upload(url)
+      Task { await upload(url) }
     }
   }
 
-  private func upload(_ url: URL) {
+  private func upload(_ url: URL) async {
     preview = NSImage(contentsOf: url)
     status = "Uploading…"
-    model.uploadScreen(url: url, mode: mode)
+    await model.uploadScreen(url: url, mode: mode)
     status = model.deviceError ?? "Uploaded to the keyboard."
   }
 }

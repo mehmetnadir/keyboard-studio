@@ -138,9 +138,30 @@ import Foundation
     try store.flush(day: "2024-01-02", counts: [1: 10], hourBuckets: [:], activeMinutes: 5)
     try store.flush(day: "2024-01-03", counts: [1: 10], hourBuckets: [:], activeMinutes: 5)
 
-    let records: Records = try store.records()
+    // asOf pins "today" so the run is recognised as still current.
+    let records: Records = try store.records(asOf: "2024-01-03")
     #expect(records.currentStreak == 3)
     #expect(records.longestStreak == 3)
+  }
+
+  @Test func abandonedStreakIsNotCurrent() throws {
+    let (store, path) = try makeTempStore()
+    defer {
+      store.close()
+      cleanup(path: path)
+    }
+
+    try store.flush(day: "2024-01-01", counts: [1: 10], hourBuckets: [:], activeMinutes: 5)
+    try store.flush(day: "2024-01-02", counts: [1: 10], hourBuckets: [:], activeMinutes: 5)
+
+    // Three weeks later the old run must not still be reported as current.
+    let records: Records = try store.records(asOf: "2024-01-23")
+    #expect(records.currentStreak == 0)
+    #expect(records.longestStreak == 2)
+
+    // The day after the last active one still counts: today may be young.
+    let nextDay: Records = try store.records(asOf: "2024-01-03")
+    #expect(nextDay.currentStreak == 2)
   }
 
   @Test func streakWithGap() throws {
@@ -158,7 +179,7 @@ import Foundation
     // Gap: 01-05 through 01-09 have no activity before this single day.
     try store.flush(day: "2024-01-10", counts: [1: 10], hourBuckets: [:], activeMinutes: 5)
 
-    let records: Records = try store.records()
+    let records: Records = try store.records(asOf: "2024-01-10")
     #expect(records.currentStreak == 1)
     #expect(records.longestStreak == 4)
   }

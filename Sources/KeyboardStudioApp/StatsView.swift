@@ -9,6 +9,8 @@ struct StatsView: View {
       VStack(alignment: .leading, spacing: 20) {
         if !model.monitoringEnabled {
           permissionBanner
+        } else if model.keyboardNotDetected {
+          notDetectedBanner
         }
         headline
         cards
@@ -44,6 +46,25 @@ struct StatsView: View {
       Spacer()
       Button("Start counting") { model.startMonitoring() }
         .buttonStyle(.borderedProminent)
+    }
+    .padding(14)
+    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+  }
+
+  private var notDetectedBanner: some View {
+    HStack(spacing: 12) {
+      Image(systemName: "exclamationmark.triangle")
+        .font(.title2)
+        .foregroundStyle(.orange)
+      VStack(alignment: .leading, spacing: 2) {
+        Text("Counting is on, but no K86 is visible")
+          .font(.headline)
+        Text("Nothing will be counted until the keyboard is connected.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Spacer()
+      Button("Stop") { model.stopMonitoring() }
     }
     .padding(14)
     .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))

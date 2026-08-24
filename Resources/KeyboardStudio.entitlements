@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Sandboxed on purpose: the absence of com.apple.security.network.client
+       makes "this app cannot reach the network" a kernel-enforced fact rather
+       than a promise. See PRIVACY.md. -->
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+  <!-- Talking to the keyboard over USB HID. -->
+  <key>com.apple.security.device.usb</key>
+  <true/>
+  <!-- Opening an image or GIF the user picked. -->
+  <key>com.apple.security.files.user-selected.read-only</key>
+  <true/>
+</dict>
+</plist>

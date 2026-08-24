@@ -3,6 +3,7 @@ import K86Kit
 import Observation
 import StatsCore
 import StatsScreen
+import SwiftUI
 
 /// Shared state for the app: device connection, lighting, and statistics.
 @MainActor
@@ -12,6 +13,7 @@ final class AppModel {
   var isConnected = false
   var firmware: String?
   var deviceError: String?
+  var isUploading = false
 
   // Lighting (mirrors what the user last applied; the keyboard has no read-back
   // for the active colour, so this is intent, not device truth)
@@ -29,9 +31,11 @@ final class AppModel {
   var yearTotal = 0
   var records: Records?
   var monthChampions: [KeyStat] = []
-  var heatmap: [Int: Int] = [:]
   var statsError: String?
   var monitoringEnabled = false
+  /// True when counting is on but no K86 is visible to the HID manager, which
+  /// would otherwise look like "counting works, you just never type".
+  var keyboardNotDetected = false
 
   /// Mirrors today's card onto the keyboard screen while the app runs.
   var screenShowsStats = false {
@@ -43,57 +47,60 @@ final class AppModel {
   private var monitor: KeyMonitor?
   private var refreshTimer: Timer?
   private var screenTimer: Timer?
+  private var terminationObserver: (any NSObjectProtocol)?
+
+  private static let monitoringPreferenceKey = "counting.enabled"
 
   // MARK: - Lifecycle
 
   func onAppear() {
-    refreshDevice()
+    guard store == nil else {
+      // SwiftUI can re-run onAppear without a matching onDisappear.
+      refreshDevice()
+      refreshStats()
+      return
+    }
     openStore()
+    refreshDevice()
     refreshStats()
+
+    refreshTimer?.invalidate()
     refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-      Task { @MainActor in
+      MainActor.assumeIsolated {
         self?.refreshDevice()
         self?.refreshStats()
       }
     }
-  }
 
-  func onDisappear() {
-    refreshTimer?.invalidate()
-    screenTimer?.invalidate()
-    monitor?.stop()
-    store?.close()
-  }
+    // Teardown belongs to the app, not the window: closing the window of a
+    // menu-bar app must not stop counting.
+    if terminationObserver == nil {
+      terminationObserver = NotificationCenter.default.addObserver(
+        forName: NSApplication.willTerminateNotification, object: nil, queue: .main
+      ) { [weak self] _ in
+        MainActor.assumeIsolated { self?.shutDown() }
+      }
+    }
 
-  // MARK: - Screen mirror
-
-  private func startScreenMirror() {
-    pushStatsToScreen()
-    screenTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-      Task { @MainActor in self?.pushStatsToScreen() }
+    if UserDefaults.standard.bool(forKey: Self.monitoringPreferenceKey) {
+      startMonitoring()
     }
   }
 
-  private func stopScreenMirror() {
+  /// Flushes and releases everything. Safe to call more than once.
+  func shutDown() {
+    refreshTimer?.invalidate()
+    refreshTimer = nil
     screenTimer?.invalidate()
     screenTimer = nil
-    screenStatus = nil
-  }
-
-  func pushStatsToScreen() {
-    guard let store, K86.isConnected else {
-      screenStatus = "Connect the cable to update the screen."
-      return
-    }
-    do {
-      try monitor?.flush()
-      let card = try StatsCard.today(store: store)
-      let keyboard = try K86()
-      defer { keyboard.close() }
-      try Screen.writeImage(card, on: keyboard)
-      screenStatus = "Updated \(Date().formatted(date: .omitted, time: .shortened))"
-    } catch {
-      screenStatus = String(describing: error)
+    monitor?.stop()
+    monitor = nil
+    monitoringEnabled = false
+    store?.close()
+    store = nil
+    if let terminationObserver {
+      NotificationCenter.default.removeObserver(terminationObserver)
+      self.terminationObserver = nil
     }
   }
 
@@ -131,8 +138,7 @@ final class AppModel {
     withDevice { keyboard in
       try keyboard.setLEDs(on: true)
       if effect == .solid {
-        try keyboard.setMainColor(
-          mainColor.rgb, brightness: brightness, speed: speed)
+        try keyboard.setMainColor(mainColor.rgb, brightness: brightness, speed: speed)
       } else {
         try keyboard.setMainEffect(
           effect, brightness: brightness, speed: speed,
@@ -154,14 +160,59 @@ final class AppModel {
     }
   }
 
-  func uploadScreen(url: URL, mode: ContentMode = .fill) {
-    withDevice { keyboard in
-      let frames = try Screen.loadFrames(url: url, mode: mode)
-      if frames.count == 1 {
-        try Screen.writeImage(frames[0], on: keyboard)
-      } else {
-        try Screen.writeAnimation(frames, on: keyboard)
-      }
+  /// Uploads off the main thread: a 30-frame GIF takes roughly 20 seconds of
+  /// chunked writes, which would otherwise freeze the whole UI.
+  func uploadScreen(url: URL, mode: K86Kit.ContentMode = .fill) async {
+    isUploading = true
+    defer { isUploading = false }
+    do {
+      try await Task.detached(priority: .userInitiated) {
+        let keyboard = try K86()
+        defer { keyboard.close() }
+        let frames = try Screen.loadFrames(url: url, mode: mode)
+        if frames.count == 1 {
+          try Screen.writeImage(frames[0], on: keyboard)
+        } else {
+          try Screen.writeAnimation(frames, on: keyboard)
+        }
+      }.value
+      deviceError = nil
+    } catch {
+      deviceError = String(describing: error)
+    }
+  }
+
+  // MARK: - Screen mirror
+
+  private func startScreenMirror() {
+    Task { await pushStatsToScreen() }
+    screenTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+      Task { @MainActor in await self?.pushStatsToScreen() }
+    }
+  }
+
+  private func stopScreenMirror() {
+    screenTimer?.invalidate()
+    screenTimer = nil
+    screenStatus = nil
+  }
+
+  func pushStatsToScreen() async {
+    guard let store, K86.isConnected else {
+      screenStatus = "Connect the cable to update the screen."
+      return
+    }
+    do {
+      try monitor?.flush()
+      let card = try StatsCard.today(store: store)
+      try await Task.detached(priority: .utility) {
+        let keyboard = try K86()
+        defer { keyboard.close() }
+        try Screen.writeImage(card, on: keyboard)
+      }.value
+      screenStatus = "Updated \(Date().formatted(date: .omitted, time: .shortened))"
+    } catch {
+      screenStatus = String(describing: error)
     }
   }
 
@@ -176,13 +227,22 @@ final class AppModel {
   }
 
   func startMonitoring() {
-    guard let store, monitor == nil else { return }
+    guard let store else { return }
+    guard monitor == nil else {
+      monitoringEnabled = monitor?.isRunning ?? false
+      return
+    }
     let monitor = KeyMonitor(store: store)
+    monitor.onFlushError = { [weak self] error in
+      Task { @MainActor in self?.statsError = String(describing: error) }
+    }
     do {
       try monitor.start()
       self.monitor = monitor
       monitoringEnabled = true
+      keyboardNotDetected = monitor.matchedDeviceCount == 0
       statsError = nil
+      UserDefaults.standard.set(true, forKey: Self.monitoringPreferenceKey)
     } catch {
       statsError = String(describing: error)
       monitoringEnabled = false
@@ -193,6 +253,8 @@ final class AppModel {
     monitor?.stop()
     monitor = nil
     monitoringEnabled = false
+    keyboardNotDetected = false
+    UserDefaults.standard.set(false, forKey: Self.monitoringPreferenceKey)
     refreshStats()
   }
 
@@ -200,7 +262,9 @@ final class AppModel {
     guard let store else { return }
     do {
       try monitor?.flush()
-      let todayKey = Self.dayString(Date())
+      keyboardNotDetected = monitoringEnabled && (monitor?.matchedDeviceCount ?? 0) == 0
+
+      let todayKey = KeyMonitor.today()
       let monthStart = String(todayKey.prefix(7)) + "-01"
       let yearStart = String(todayKey.prefix(4)) + "-01-01"
 
@@ -210,20 +274,10 @@ final class AppModel {
       yearTotal = try store.total(from: yearStart, to: todayKey)
       records = try store.records()
       monthChampions = try store.topKeys(from: monthStart, to: todayKey, limit: 10)
-      heatmap = Dictionary(
-        uniqueKeysWithValues: try store.topKeys(from: monthStart, to: todayKey, limit: 200)
-          .map { ($0.keycode, $0.count) })
       statsError = nil
     } catch {
       statsError = String(describing: error)
     }
-  }
-
-  static func dayString(_ date: Date) -> String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy-MM-dd"
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    return formatter.string(from: date)
   }
 }
 

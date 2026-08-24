@@ -87,9 +87,12 @@ enum StatsCommands {
   // MARK: - Watch
 
   private static func watch(store: StatsStore, seconds: Double) throws {
-    let monitor = KeyMonitor(store: store)
+    let monitor = KeyMonitor(store: store, enableLiveCallback: true)
     let live = LiveCounter()
     monitor.onPress = { _ in live.increment() }
+    monitor.onFlushError = { error in
+      errPrint("warning: could not save counts — \(error)")
+    }
 
     do {
       try monitor.start(flushInterval: 10)
@@ -105,11 +108,27 @@ enum StatsCommands {
       exit(1)
     }
 
+    if monitor.matchedDeviceCount == 0 {
+      errPrint("warning: no K86 detected — nothing will be counted until it is connected.")
+    }
     print("Counting K86 key presses for \(Int(seconds))s (only this keyboard, counts only)…")
+
+    // Ctrl-C must still persist what was counted so far.
+    signal(SIGINT, SIG_IGN)
+    let interrupt = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+    interrupt.setEventHandler {
+      monitor.stop()
+      store.close()
+      print("\nStopped. Run `kstudio stats` to see totals.")
+      exit(0)
+    }
+    interrupt.resume()
+
     let deadline = Date().addingTimeInterval(seconds)
     while Date() < deadline {
       CFRunLoopRunInMode(.defaultMode, 0.25, false)
     }
+    interrupt.cancel()
     monitor.stop()
     print("Counted \(live.value) presses. Run `kstudio stats` to see totals.")
   }

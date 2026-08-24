@@ -11,7 +11,7 @@ Four aggregate tables, in one SQLite file on your Mac:
 | Table | Contents | Example row |
 |---|---|---|
 | `daily_counts` | how many times each key was pressed, per day | `2026-08-24, 0x2C, 1843` |
-| `daily_activity` | presses and active minutes, per day | `2026-08-24, 212, 9455` |
+| `daily_activity` | active minutes and presses, per day | `2026-08-24, 212, 9455` |
 | `hourly_totals` | lifetime histogram over 24 hours | `14, 182304` |
 | `meta` | schema version, first-seen date | `schema_version, 1` |
 
@@ -42,10 +42,15 @@ to trust:
    the app would not work if it were, because it cannot tell devices apart.
 2. **Keyboard usages only.** Only HID usage page `0x07` (Keyboard/Keypad) values
    are counted. Consumer keys, the knob and pointer usages are discarded.
-3. **No network.** The app declares no network entitlement and contains no
-   networking code. There is no telemetry, no crash reporting, no update ping.
+3. **No network — enforced by the kernel.** The app runs in the App Sandbox and
+   deliberately omits `com.apple.security.network.client`, so macOS refuses any
+   outbound connection it might attempt. It also contains no networking code.
+   There is no telemetry, no crash reporting, no update ping.
 4. **No sync.** The database is a plain file under
-   `~/Library/Application Support/KeyboardStudio/`. Nothing copies it anywhere.
+   `~/Library/Application Support/KeyboardStudio/`, created with `0700`
+   permissions. Nothing copies it anywhere.
+5. **`first_seen` is a date, not a timestamp.** The only time-like value stored
+   anywhere is the day you first used the app.
 
 ## Verify it yourself
 
@@ -53,12 +58,24 @@ to trust:
 # Read your own data — it is a normal SQLite file:
 sqlite3 ~/Library/Application\ Support/KeyboardStudio/stats.sqlite .dump | head
 
-# Confirm no outbound connections while the app runs:
+# Confirm the signed app has no network permission (expect 0):
+codesign -d --entitlements - '/Applications/Keyboard Studio.app' | grep -c network.client
+
+# Confirm no outbound connections while it runs:
 lsof -i -a -p $(pgrep -f 'Keyboard Studio')     # expect no output
 
-# Read the ~150 lines that touch keyboard input:
+# Confirm the source contains no networking at all (expect no matches):
+grep -rn 'URLSession\|Network\.\|CFSocket' Sources/
+
+# Read the one file that touches keyboard input (~250 lines):
 Sources/StatsCore/KeyMonitor.swift
 ```
+
+One caveat worth stating plainly: `StatsCore` is also published as a library,
+and `KeyMonitor` offers an opt-in per-press callback for live UI. It carries a
+usage id with no timing, it is disabled unless a caller passes
+`enableLiveCallback: true`, and the app never enables it — but if you build on
+the library, that callback is the one place order could be observed.
 
 ## Delete your data
 

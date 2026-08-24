@@ -19,6 +19,10 @@ import IOKit.hid
 ///   typed text. There is no buffer to leak.
 /// - Nothing is written anywhere until `flush()` hands the aggregates to
 ///   `StatsStore`.
+///
+/// `onPress` is the one exception worth knowing about: it fires per press, in
+/// order, for live UI. It carries a usage id and no timing, the app never sets
+/// it, and it is off unless a caller opts in via `init(enableLiveCallback:)`.
 public final class KeyMonitor {
   /// Emitted for live UI (heatmaps); carries a usage id, never a character.
   public typealias PressHandler = @Sendable (Int) -> Void
@@ -26,11 +30,20 @@ public final class KeyMonitor {
   private let vendorID: Int
   private let productID: Int
   private let store: StatsStore
+  private let enableLiveCallback: Bool
+
+  /// Guards the pending aggregates.
   private let lock = NSLock()
+  /// Guards start/stop lifecycle fields, which are touched from the app, the
+  /// timer queue, and the HID callback thread.
+  private let stateLock = NSLock()
+  private let queue = DispatchQueue(label: "dev.keyboardstudio.keymonitor")
 
   private var manager: IOHIDManager?
   private var timer: DispatchSourceTimer?
-  private let queue = DispatchQueue(label: "dev.keyboardstudio.keymonitor")
+  private var selfReference: Unmanaged<KeyMonitor>?
+  private var running = false
+  private var matchedDevices = 0
 
   // Aggregates pending flush — reset on every successful write.
   private var counts: [Int: Int] = [:]
@@ -38,18 +51,52 @@ public final class KeyMonitor {
   private var pendingDay: String = KeyMonitor.today()
   private var activeMinutes = 0
   private var lastActiveMinute: Int?
+  /// Batches whose write failed and that belong to a day already rolled past.
+  private var carryOver: [Batch] = []
 
-  public var onPress: PressHandler?
-  public private(set) var isRunning = false
+  private var pressHandler: PressHandler?
+  private var flushErrorHandler: (@Sendable (Error) -> Void)?
 
-  public init(store: StatsStore, vendorID: Int = 0x3151, productID: Int = 0x4015) {
+  public init(
+    store: StatsStore, vendorID: Int = 0x3151, productID: Int = 0x4015,
+    enableLiveCallback: Bool = false
+  ) {
     self.store = store
     self.vendorID = vendorID
     self.productID = productID
+    self.enableLiveCallback = enableLiveCallback
   }
 
   deinit {
-    stop()
+    // stop() must run on the owner's thread while the run loop is alive; a
+    // late teardown here could race an in-flight callback.
+    precondition(!running, "call stop() before releasing KeyMonitor")
+  }
+
+  // MARK: - Handlers
+
+  /// Per-press callback for live UI. Ignored unless the monitor was created
+  /// with `enableLiveCallback: true`. Set it before `start()`.
+  public var onPress: PressHandler? {
+    get { stateLock.withLock { pressHandler } }
+    set { stateLock.withLock { pressHandler = newValue } }
+  }
+
+  /// Called when a flush fails, so the UI can tell the user counting stopped
+  /// persisting instead of failing silently.
+  public var onFlushError: (@Sendable (Error) -> Void)? {
+    get { stateLock.withLock { flushErrorHandler } }
+    set { stateLock.withLock { flushErrorHandler = newValue } }
+  }
+
+  public var isRunning: Bool {
+    stateLock.withLock { running }
+  }
+
+  /// How many K86 keyboards the HID manager currently sees. Zero means nothing
+  /// will ever be counted — surface it rather than showing an eternal 0.
+  public var matchedDeviceCount: Int {
+    stateLock.withLock { matchedDevices }
   }
 
   // MARK: - Lifecycle
@@ -59,7 +106,12 @@ public final class KeyMonitor {
   /// - Throws: `MonitorError` if the HID manager cannot be opened — most often
   ///   because Input Monitoring permission was denied.
   public func start(flushInterval: TimeInterval = 60) throws {
-    guard !isRunning else { return }
+    stateLock.lock()
+    guard !running else {
+      stateLock.unlock()
+      return
+    }
+    stateLock.unlock()
 
     let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
     let matching: [String: Any] = [
@@ -70,8 +122,13 @@ public final class KeyMonitor {
     ]
     IOHIDManagerSetDeviceMatching(manager, matching as CFDictionary)
 
-    let context = Unmanaged.passUnretained(self).toOpaque()
+    // Retained for the lifetime of the registration: the run loop holds only a
+    // raw pointer, so the object must not be freed while callbacks can fire.
+    let reference = Unmanaged.passRetained(self)
+    let context = reference.toOpaque()
     IOHIDManagerRegisterInputValueCallback(manager, keyMonitorInputCallback, context)
+    IOHIDManagerRegisterDeviceMatchingCallback(manager, keyMonitorDeviceAdded, context)
+    IOHIDManagerRegisterDeviceRemovalCallback(manager, keyMonitorDeviceRemoved, context)
     IOHIDManagerScheduleWithRunLoop(
       manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
 
@@ -79,35 +136,67 @@ public final class KeyMonitor {
     guard result == kIOReturnSuccess else {
       IOHIDManagerUnscheduleFromRunLoop(
         manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
+      reference.release()
       throw MonitorError.inputMonitoringDenied(result)
     }
 
-    self.manager = manager
-    isRunning = true
+    let devices = (IOHIDManagerCopyDevices(manager) as? Set<AnyHashable>)?.count ?? 0
+    stateLock.withLock {
+      self.manager = manager
+      self.selfReference = reference
+      self.running = true
+      self.matchedDevices = devices
+    }
     startTimer(interval: flushInterval)
   }
 
   public func stop() {
+    stateLock.lock()
+    guard running else {
+      stateLock.unlock()
+      return
+    }
+    let manager = self.manager
+    let reference = self.selfReference
+    let timer = self.timer
+    self.manager = nil
+    self.selfReference = nil
+    self.timer = nil
+    running = false
+    matchedDevices = 0
+    stateLock.unlock()
+
     timer?.cancel()
-    timer = nil
     if let manager {
       IOHIDManagerUnscheduleFromRunLoop(
         manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
       IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-      self.manager = nil
     }
-    isRunning = false
-    try? flush()
+    do {
+      try flush()
+    } catch {
+      reportFlushError(error)
+    }
+    reference?.release()
   }
 
   private func startTimer(interval: TimeInterval) {
     let timer = DispatchSource.makeTimerSource(queue: queue)
     timer.schedule(deadline: .now() + interval, repeating: interval)
     timer.setEventHandler { [weak self] in
-      try? self?.flush()
+      guard let self else { return }
+      do {
+        try flush()
+      } catch {
+        reportFlushError(error)
+      }
     }
     timer.resume()
-    self.timer = timer
+    stateLock.withLock { self.timer = timer }
+  }
+
+  private func reportFlushError(_ error: Error) {
+    stateLock.withLock { flushErrorHandler }?(error)
   }
 
   // MARK: - Counting
@@ -121,13 +210,11 @@ public final class KeyMonitor {
     let minute = Int(date.timeIntervalSince1970 / 60)
 
     lock.lock()
+    var finished: Batch?
     if day != pendingDay {
-      // Crossing midnight: persist the finished day before switching.
-      let finished = drainLocked()
-      lock.unlock()
-      try? write(finished)
-      lock.lock()
+      finished = drainLocked()
       pendingDay = day
+      lastActiveMinute = nil
     }
     counts[usage, default: 0] += 1
     hourBuckets[hour, default: 0] += 1
@@ -137,18 +224,53 @@ public final class KeyMonitor {
     }
     lock.unlock()
 
-    onPress?(usage)
+    if let finished {
+      // The finished day is queued rather than written here: an SQLite write on
+      // the input thread would stall key delivery. It lands on the next flush,
+      // or sooner via this async nudge.
+      lock.lock()
+      carryOver.append(finished)
+      lock.unlock()
+      queue.async { [weak self] in
+        guard let self else { return }
+        do {
+          try flush()
+        } catch {
+          reportFlushError(error)
+        }
+      }
+    }
+
+    if enableLiveCallback {
+      stateLock.withLock { pressHandler }?(usage)
+    }
   }
 
   /// Writes pending aggregates to the store and clears them.
   public func flush() throws {
     lock.lock()
+    let pending = carryOver
+    carryOver.removeAll(keepingCapacity: false)
     let batch = drainLocked()
     lock.unlock()
-    try write(batch)
+
+    var firstError: Error?
+    for old in pending {
+      do {
+        try write(old)
+      } catch {
+        firstError = firstError ?? error
+      }
+    }
+    do {
+      try write(batch)
+    } catch {
+      firstError = firstError ?? error
+    }
+    if let firstError { throw firstError }
   }
 
-  private struct Batch {
+  struct Batch {
     let day: String
     let counts: [Int: Int]
     let hourBuckets: [Int: Int]
@@ -173,11 +295,16 @@ public final class KeyMonitor {
         day: batch.day, counts: batch.counts, hourBuckets: batch.hourBuckets,
         activeMinutes: batch.activeMinutes)
     } catch {
-      // Put the counts back so a transient DB error doesn't lose the day's data.
       lock.lock()
-      for (key, value) in batch.counts { counts[key, default: 0] += value }
-      for (key, value) in batch.hourBuckets { hourBuckets[key, default: 0] += value }
-      activeMinutes += batch.activeMinutes
+      if batch.day == pendingDay {
+        // Same day still open: fold the counts back into the live totals.
+        for (key, value) in batch.counts { counts[key, default: 0] += value }
+        for (key, value) in batch.hourBuckets { hourBuckets[key, default: 0] += value }
+        activeMinutes += batch.activeMinutes
+      } else {
+        // A past day must keep its own date — never merge it into today.
+        carryOver.append(batch)
+      }
       lock.unlock()
       throw error
     }
@@ -185,25 +312,36 @@ public final class KeyMonitor {
 
   // MARK: - Dates
 
-  static let calendar = Calendar(identifier: .gregorian)
+  /// One shared zone for both the calendar and the formatter, so the day string
+  /// and the hour bucket can never disagree.
+  static let timeZone = TimeZone.autoupdatingCurrent
+
+  static let calendar: Calendar = {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    return calendar
+  }()
 
   private static let dayFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd"
     formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = timeZone
     return formatter
   }()
 
-  static func dayString(_ date: Date) -> String {
+  public static func dayString(_ date: Date) -> String {
     dayFormatter.string(from: date)
   }
 
-  static func today() -> String {
+  public static func today() -> String {
     dayString(Date())
   }
 }
 
-/// C callback trampoline — resolves the element's usage page/id and counts it.
+// MARK: - C callbacks
+
+/// Resolves the element's usage page/id and counts it.
 private func keyMonitorInputCallback(
   context: UnsafeMutableRawPointer?, result: IOReturn, sender: UnsafeMutableRawPointer?,
   value: IOHIDValue
@@ -221,4 +359,26 @@ private func keyMonitorInputCallback(
 
   let monitor = Unmanaged<KeyMonitor>.fromOpaque(context).takeUnretainedValue()
   monitor.record(usage: usage)
+}
+
+private func keyMonitorDeviceAdded(
+  context: UnsafeMutableRawPointer?, result: IOReturn, sender: UnsafeMutableRawPointer?,
+  device: IOHIDDevice
+) {
+  guard let context else { return }
+  Unmanaged<KeyMonitor>.fromOpaque(context).takeUnretainedValue().deviceCountChanged(by: 1)
+}
+
+private func keyMonitorDeviceRemoved(
+  context: UnsafeMutableRawPointer?, result: IOReturn, sender: UnsafeMutableRawPointer?,
+  device: IOHIDDevice
+) {
+  guard let context else { return }
+  Unmanaged<KeyMonitor>.fromOpaque(context).takeUnretainedValue().deviceCountChanged(by: -1)
+}
+
+extension KeyMonitor {
+  fileprivate func deviceCountChanged(by delta: Int) {
+    stateLock.withLock { matchedDevices = max(0, matchedDevices + delta) }
+  }
 }

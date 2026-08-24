@@ -79,12 +79,6 @@ public final class StatsStore: @unchecked Sendable {
   private var isClosed: Bool = false
   private let lock: NSLock = NSLock()
 
-  private let isoDateFormatter: ISO8601DateFormatter = {
-    let formatter: ISO8601DateFormatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime]
-    return formatter
-  }()
-
   // MARK: - Lifecycle
 
   /// Opens (or creates) the SQLite database at `path` and runs migrations.
@@ -101,7 +95,7 @@ public final class StatsStore: @unchecked Sendable {
       if let dbPointer: OpaquePointer = dbPointer,
         let errmsg: UnsafePointer<CChar> = sqlite3_errmsg(dbPointer) {
         message = String(cString: errmsg)
-        sqlite3_close(dbPointer)
+        sqlite3_close_v2(dbPointer)
       } else {
         message = "Unable to open database at path: \(path)"
       }
@@ -109,8 +103,14 @@ public final class StatsStore: @unchecked Sendable {
     }
     self.db = dbHandle
 
+    // The app and `kstudio watch` can hold the same file open; without a busy
+    // timeout the second writer's BEGIN IMMEDIATE fails instantly and its whole
+    // flush is rolled back.
+    sqlite3_busy_timeout(dbHandle, 5000)
+
     do {
       try StatsStore.exec("PRAGMA journal_mode=WAL;", db: dbHandle)
+      try StatsStore.exec("PRAGMA synchronous=NORMAL;", db: dbHandle)
       try StatsStore.exec("PRAGMA foreign_keys=ON;", db: dbHandle)
 
       let createDailyCounts: String = """
@@ -153,7 +153,7 @@ public final class StatsStore: @unchecked Sendable {
       """
       try StatsStore.exec(setSchemaVersion, db: dbHandle)
     } catch {
-      sqlite3_close(dbHandle)
+      sqlite3_close_v2(dbHandle)
       self.db = nil
       self.isClosed = true
       throw error
@@ -162,7 +162,7 @@ public final class StatsStore: @unchecked Sendable {
 
   deinit {
     if let dbHandle: OpaquePointer = db {
-      sqlite3_close(dbHandle)
+      sqlite3_close_v2(dbHandle)
     }
   }
 
@@ -184,7 +184,10 @@ public final class StatsStore: @unchecked Sendable {
         .appendingPathComponent("Application Support", isDirectory: true)
         .appendingPathComponent("KeyboardStudio", isDirectory: true)
     }
-    try? fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+    // 0o700: the file holds a per-key frequency profile, so keep it to the user.
+    try? fileManager.createDirectory(
+      at: directoryURL, withIntermediateDirectories: true,
+      attributes: [.posixPermissions: 0o700])
     return directoryURL.appendingPathComponent("stats.sqlite").path
   }
 
@@ -214,8 +217,10 @@ public final class StatsStore: @unchecked Sendable {
       try check(sqlite3_prepare_v2(db, metaSQL, -1, &metaStmt, nil), db: db)
       defer { sqlite3_finalize(metaStmt) }
 
-      let nowISO: String = isoDateFormatter.string(from: Date())
-      try check(sqlite3_bind_text(metaStmt, 1, nowISO, -1, SQLITE_TRANSIENT), db: db)
+      // Date only, no clock time: a precise timestamp would pin down when the
+      // first key was struck, which the privacy contract rules out.
+      let firstSeen: String = day
+      try check(sqlite3_bind_text(metaStmt, 1, firstSeen, -1, SQLITE_TRANSIENT), db: db)
       try stepDone(metaStmt, db: db)
 
       if !counts.isEmpty {
@@ -417,11 +422,11 @@ public final class StatsStore: @unchecked Sendable {
 
   /// Busiest day, activity streaks, and the peak hour-of-day across all recorded history.
   ///
-  /// Streaks are computed from the days actually present in the DB, not from the
-  /// real wall-clock date — `currentStreak` counts back from the most recent day
-  /// with recorded activity, keeping this deterministic and testable regardless
-  /// of when the test runs.
-  public func records() throws -> Records {
+  /// `currentStreak` is only non-zero when the run reaches `asOf` (or the day
+  /// before it — today may simply not have started yet). Without that anchor a
+  /// streak abandoned weeks ago would still be reported as current.
+  /// `asOf` is injectable so tests stay deterministic.
+  public func records(asOf asOfDay: String = KeyMonitor.today()) throws -> Records {
     lock.lock()
     defer { lock.unlock() }
 
@@ -505,8 +510,16 @@ public final class StatsStore: @unchecked Sendable {
             }
           }
 
-          currentStreak = currentRun
           longestStreak = maxRun
+          // A run only counts as "current" if it reaches today, or yesterday
+          // (today may not have any presses yet).
+          if let lastDay: String = activeDays.last?.day,
+            let lastDate: Date = dateFormatter.date(from: lastDay),
+            let asOfDate: Date = dateFormatter.date(from: asOfDay),
+            let gap: Int = calendar.dateComponents([.day], from: lastDate, to: asOfDate).day,
+            (0...1).contains(gap) {
+            currentStreak = currentRun
+          }
         }
       }
     }
@@ -586,7 +599,7 @@ public final class StatsStore: @unchecked Sendable {
     guard !isClosed else { return }
     isClosed = true
     if let dbHandle: OpaquePointer = db {
-      sqlite3_close(dbHandle)
+      sqlite3_close_v2(dbHandle)
       db = nil
     }
   }

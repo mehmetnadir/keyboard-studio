@@ -10,7 +10,6 @@ struct KeyboardStudioApp: App {
         .environment(model)
         .frame(minWidth: 640, minHeight: 520)
         .onAppear { model.onAppear() }
-        .onDisappear { model.onDisappear() }
     }
     .windowResizability(.contentMinSize)
 
@@ -119,7 +118,10 @@ struct MenuBarView: View {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.windows.first { $0.canBecomeMain }?.makeKeyAndOrderFront(nil)
       }
-      Button("Quit") { NSApp.terminate(nil) }
+      Button("Quit") {
+        model.shutDown()  // flush pending counts before the process goes away
+        NSApp.terminate(nil)
+      }
     }
     .padding(14)
     .frame(width: 240)

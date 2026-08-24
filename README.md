@@ -59,7 +59,10 @@ kstudio watch 60                 # count presses for 60s (asks for permission on
 kstudio stats                    # lifetime totals, streaks, peak hour, champions
 ```
 
-Statistics work over any connection — cable, Bluetooth or 2.4 GHz.
+Counting is bound to the K86's USB identity (vendor `0x3151`, product `0x4015`)
+and is verified over the cable. Whether the keyboard enumerates under the same
+identity over Bluetooth or the 2.4 GHz dongle is not confirmed yet; if it does
+not, the app now says "no K86 detected" instead of silently counting nothing.
 
 ## Privacy
 

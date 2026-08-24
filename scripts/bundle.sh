@@ -18,9 +18,15 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/Keyboard Studio"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 
-# Ad-hoc signature: enough for TCC to remember the app across launches.
+# Ad-hoc signature with the sandbox entitlements. --deep is deliberately not
+# used (Apple discourages it); there is one binary and it is signed in place.
 # Re-signing changes the identity, so macOS may ask for permission again.
-codesign --force --deep --sign - "$APP"
+codesign --force --options runtime \
+  --entitlements "$ROOT/Resources/KeyboardStudio.entitlements" \
+  --sign - "$APP"
 
 echo "Built: $APP"
 echo "Run:   open '$APP'"
+echo
+echo "Verify the sandbox denies networking:"
+echo "  codesign -d --entitlements - '$APP' | grep -c network.client   # expect 0"
