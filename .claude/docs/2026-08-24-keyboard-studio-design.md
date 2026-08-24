@@ -122,6 +122,48 @@ macOS itself exposes no keystroke counts anywhere — Screen Time's `knowledgeC.
 records app usage, notifications and pickups only — so this is a genuine gap
 rather than a duplicated system feature.
 
+## Host-streamed per-key RGB — constraints (researched 2026-08-24)
+
+Relevant if the ROYUAN protocol turns out to support per-key colour. Numbers are
+from primary sources (OpenRGB/Vial/QMK source, Razer's own DevCon Q&A).
+
+- **Target 60 fps, never exceed ~62.5.** QMK's `RGB_MATRIX_LED_FLUSH_LIMIT` is
+  16 ms, so faster is pure waste. Razer states 30 fps as its ceiling and warns
+  that exceeding it can freeze lighting until the device is replugged.
+- **Streaming can starve the keyboard's own matrix scan.** OpenRGB #2513: at
+  60 fps a Corsair K70 dropped keystrokes; at 1 fps it was fine. A lighting-only
+  test will not catch this — check that typing still registers.
+- **Never read back inside the frame loop.** OpenRGB's VialRGB driver blocks on a
+  1 s-timeout read per 9-LED packet and loses most of its throughput to it.
+  SignalRGB writes and moves on; copy that.
+- **Burst a whole frame, then idle** — pacing packets evenly maximises tearing
+  against the firmware's flush cycle. There is no atomic commit in Vial's
+  direct mode.
+- **Expose `ledsPerPacket` and `interPacketDelay` as per-device settings.**
+  OpenRGB ships both because devices really do drop frames.
+- **Some devices revert to built-in effects without a continuous packet stream**
+  — Razer keepalives every 2.5 s, Corsair every 50 s. Needed even for a static
+  colour.
+- **Bricking risk is device *matching*, not frame rate.** Every confirmed
+  OpenRGB bricking is SMBus (unavailable on macOS) or a VID/PID collision that
+  sent one vendor's protocol to another's board. Verify identity before writing
+  — we already read firmware via `0x80` and check the opcode echo.
+
+### macOS specifics that apply to us today
+
+- **Never seize the device.** hidapi seizes by default on macOS, which stops the
+  keyboard typing (OpenRGB #2417). We use IOKit directly with
+  `kIOHIDOptionsTypeNone` — verified, no seize.
+- **Writing feature reports does not need Input Monitoring; reading input
+  reports does.** Apple DTS (Kevin Elliott, forum 804793) states this directly,
+  and it exactly matches what we observed: lighting and screen writes work in a
+  sandboxed bundle, while `kstudio watch` is refused until the permission is
+  granted. So the sandbox is not what blocks counting — the missing TCC grant is.
+- **Sleep/wake:** USB devices re-enumerate, leaving a long-lived HID manager
+  bound to a device that no longer exists. The app now restarts counting and
+  re-detects on `NSWorkspace.didWakeNotification`.
+- **CoreHID is macOS 15+.** We target macOS 14, so IOKit stays for now.
+
 ## Verification gates
 
 - `swift build` zero errors per commit

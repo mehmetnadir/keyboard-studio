@@ -55,6 +55,7 @@ final class AppModel {
   private var refreshTimer: Timer?
   private var screenTimer: Timer?
   private var terminationObserver: (any NSObjectProtocol)?
+  private var wakeObserver: (any NSObjectProtocol)?
 
   private static let monitoringPreferenceKey = "counting.enabled"
 
@@ -89,9 +90,34 @@ final class AppModel {
       }
     }
 
+    // USB devices re-enumerate across sleep, which leaves a long-lived HID
+    // manager attached to a device that no longer exists. Restart counting and
+    // re-detect the keyboard on wake rather than silently counting nothing.
+    if wakeObserver == nil {
+      wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+        forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+      ) { [weak self] _ in
+        MainActor.assumeIsolated { self?.handleWake() }
+      }
+    }
+
     if UserDefaults.standard.bool(forKey: Self.monitoringPreferenceKey) {
       startMonitoring()
     }
+  }
+
+  private func handleWake() {
+    refreshDevice()
+    guard monitoringEnabled else {
+      refreshStats()
+      return
+    }
+    // Flushes pending counts, then rebinds to the re-enumerated device.
+    monitor?.stop()
+    monitor = nil
+    monitoringEnabled = false
+    startMonitoring()
+    refreshStats()
   }
 
   /// Flushes and releases everything. Safe to call more than once.
@@ -108,6 +134,10 @@ final class AppModel {
     if let terminationObserver {
       NotificationCenter.default.removeObserver(terminationObserver)
       self.terminationObserver = nil
+    }
+    if let wakeObserver {
+      NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+      self.wakeObserver = nil
     }
   }
 
