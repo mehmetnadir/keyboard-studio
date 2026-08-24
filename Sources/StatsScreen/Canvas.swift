@@ -24,24 +24,29 @@ enum Canvas {
   }
 
   /// Runs `body` against a prepared bitmap context and returns the frame.
-  static func draw(background: Colour, _ body: (CGContext) -> Void) -> ScreenFrame {
-    let size = Screen.width
+  static func draw(
+    background: Colour, width: Int = Screen.width, height: Int = Screen.height,
+    _ body: (CGContext) -> Void
+  ) -> ScreenFrame {
     guard let context = CGContext(
-      data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: size * 4,
+      data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
       space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
-    else { return ScreenFrame(rgb: [UInt8](repeating: 0, count: size * size * 3)) }
+    else {
+      return ScreenFrame(
+        rgb: [UInt8](repeating: 0, count: width * height * 3), width: width, height: height)
+    }
 
     context.setFillColor(red: background.r, green: background.g, blue: background.b, alpha: 1)
-    context.fill(CGRect(x: 0, y: 0, width: size, height: size))
+    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
     body(context)
-    return frame(from: context, size: size)
+    return frame(from: context, width: width, height: height)
   }
 
   /// Draws one line of text. `topY` is measured from the top of the panel.
   static func text(
     _ string: String, in context: CGContext, topY: CGFloat, x: CGFloat = 10, size: CGFloat,
     color: Colour, alpha: Double = 1, weight: Weight = .regular, tracking: CGFloat = 0,
-    centered: Bool = false
+    centered: Bool = false, width: Int = Screen.width, height: Int = Screen.height
   ) {
     // CoreText attribute keys, not AppKit's — this target stays UI-framework free.
     let font = CTFontCreateWithName(weight.fontName as CFString, size, nil)
@@ -60,32 +65,36 @@ enum Canvas {
 
     let originX: CGFloat
     if centered {
-      let width = CTLineGetTypographicBounds(line, nil, nil, nil)
-      originX = (CGFloat(Screen.width) - CGFloat(width)) / 2
+      let textWidth = CTLineGetTypographicBounds(line, nil, nil, nil)
+      originX = (CGFloat(width) - CGFloat(textWidth)) / 2
     } else {
       originX = x
     }
     // Cap height sits roughly 0.78 em above the baseline for these faces.
     context.textMatrix = .identity
     context.textPosition = CGPoint(
-      x: originX, y: CGFloat(Screen.height) - topY - size * 0.78)
+      x: originX, y: CGFloat(height) - topY - size * 0.78)
     CTLineDraw(line, context)
   }
 
   /// Copies the bitmap out as-is: a bitmap context's backing store is already
   /// top-down (first row = top of the image), which is what the panel wants,
   /// even though drawing coordinates have their origin at the bottom-left.
-  static func frame(from context: CGContext, size: Int) -> ScreenFrame {
+  static func frame(
+    from context: CGContext, width: Int = Screen.width, height: Int = Screen.height
+  ) -> ScreenFrame {
+    let size = width * height
     guard let base = context.data else {
-      return ScreenFrame(rgb: [UInt8](repeating: 0, count: size * size * 3))
+      return ScreenFrame(
+        rgb: [UInt8](repeating: 0, count: size * 3), width: width, height: height)
     }
     let pixels = base.assumingMemoryBound(to: UInt8.self)
-    var rgb = [UInt8](repeating: 0, count: size * size * 3)
-    for index in 0..<(size * size) {
+    var rgb = [UInt8](repeating: 0, count: size * 3)
+    for index in 0..<size {
       rgb[index * 3] = pixels[index * 4]
       rgb[index * 3 + 1] = pixels[index * 4 + 1]
       rgb[index * 3 + 2] = pixels[index * 4 + 2]
     }
-    return ScreenFrame(rgb: rgb)
+    return ScreenFrame(rgb: rgb, width: width, height: height)
   }
 }
