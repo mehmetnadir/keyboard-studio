@@ -3,9 +3,9 @@
 Native, open-source macOS companion for the **Attack Shark K86** keyboard.
 No Windows software, no VM, no cloud — talks straight to the keyboard over USB HID.
 
-**Status: early development.** Working today: `kstudio` CLI (RGB, side strips,
-TFT screen upload). Coming next: SwiftUI app with privacy-first typing
-statistics (lifetime key counts, monthly champions, streaks) and more.
+**Status: early development.** Working today: `kstudio` CLI — RGB, side strips,
+TFT screen upload, and privacy-first typing statistics (lifetime counts, monthly
+champions, streaks). Coming next: the SwiftUI app.
 
 ## Install (from source)
 
@@ -34,12 +34,25 @@ kstudio screen animation.gif     # ...or animated GIF (up to 30 frames)
 kstudio leds off                 # LED master switch
 ```
 
-## Privacy (for the upcoming stats features)
+### Typing statistics
 
-Typing statistics will be **counters only** — how many times each key was
-pressed per day, and active minutes. No key sequences, no text, no per-key
-timestamps. Data never leaves your Mac; the app has no network access. The
-SQLite schema will be documented here so anyone can audit the stored data.
+```sh
+kstudio watch 60                 # count presses for 60s (asks for permission once)
+kstudio stats                    # lifetime totals, streaks, peak hour, champions
+```
+
+Statistics work over any connection — cable, Bluetooth or 2.4 GHz.
+
+## Privacy
+
+Typing statistics are **counters only**: how many times each key was pressed per
+day, active minutes, and a 24-hour histogram. The order of keystrokes is never
+recorded, so the stored data cannot reconstruct anything you typed. Only the
+K86 is counted — the app binds to one vendor/product id and never sees your
+built-in keyboard. No network access, no sync, no telemetry.
+
+Full details, the exact schema, and commands to verify these claims yourself:
+[PRIVACY.md](PRIVACY.md).
 
 ## Credits
 

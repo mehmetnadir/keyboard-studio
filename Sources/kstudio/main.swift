@@ -48,6 +48,8 @@ func usage() -> Never {
       kstudio screen <image|gif>            upload to the 128x128 TFT screen
       kstudio screen --test                 upload RGBW test pattern
       kstudio effects                       list effect names
+      kstudio stats                         typing statistics summary
+      kstudio watch [seconds]               count presses live (needs Input Monitoring)
 
     OPTIONS:
       --bright 0-4   brightness (default 4)
@@ -67,6 +69,9 @@ do {
   switch command {
   case "effects":
     print(LightEffect.allCases.map(\.rawValue).joined(separator: " "))
+
+  case "stats", "watch":
+    try StatsCommands.run(args)
 
   case "info":
     let kb = try K86()
