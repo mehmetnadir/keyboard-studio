@@ -142,7 +142,13 @@
 "shortcuts.key_placeholder" = "key";
 "shortcuts.assign" = "Assign";
 "shortcuts.custom_hint" = "Type a single letter or digit, or a raw usage like 0x2C for Space.";
-"shortcuts.write_pending" = "Assignments are held here for now. Writing them to the keyboard is not enabled until the keymap write command is proven on hardware — a wrong slot would silently remap a real key.";
+"shortcuts.storage" = "Assignments are written to the keyboard's own memory, so they survive unplugging and work without this app running.";
+"shortcuts.writing" = "Writing to the keyboard…";
+"shortcuts.written" = "Written to %lld keys.";
+"shortcuts.partial" = "%lld keys were not accepted and have been left unchanged.";
+"shortcuts.cleared_locally" = "Cleared here. The key keeps whatever the keyboard already had.";
+"shortcuts.clear_key" = "Clear";
+"shortcuts.no_slots" = "Could not match those keys to the keyboard's key map.";
 
 /* Screen modes */
 "screen.mode" = "Show on keyboard";
@@ -186,3 +192,6 @@
 "settings.app_rules.add" = "Add an app…";
 "settings.app_rules.remove" = "Remove";
 "settings.app_rules.active" = "active";
+"settings.device.profile" = "Active profile";
+"settings.device.profile.n" = "Profile %lld";
+"settings.device.profile.detail" = "The keyboard stores three. Key assignments are per profile; lighting and the screen are shared.";

@@ -54,10 +54,15 @@ final class AppModel {
   var screenSaveMessage: String?
 
   // Keymap / shortcuts
-  /// Pending shortcut assignments, keyed by layout key id. Held in the app
-  /// until the keymap write path is verified on hardware.
+  /// Shortcuts the user has assigned, keyed by layout key id.
   var pendingShortcuts: [String: Shortcut] = [:]
   var keymapLoaded = false
+  var shortcutBusy = false
+  var shortcutStatus: String?
+  /// Which onboard profile the board is using (it holds three).
+  var activeProfile: Int?
+  @ObservationIgnored private var cachedSlotMap: [String: Int]?
+  @ObservationIgnored private var cachedSlotMapLayout: String?
 
   // App-aware lighting
   var appRulesEnabled = false {
@@ -235,6 +240,7 @@ final class AppModel {
       if let version = try keyboard.firmwareVersion() {
         firmware = String(format: "0x%04x", version)
       }
+      activeProfile = try Keymap.activeProfile(on: keyboard)
     }
   }
 
@@ -367,9 +373,20 @@ final class AppModel {
   }
 
   /// Maps drawn keys to keymap slots by matching HID usages against the board's
-  /// own keymap — so the LED index comes from the device, not a hard-coded
-  /// table that could be wrong for a variant.
-  private func keySlotMap(layout: KeyboardLayout) -> [String: Int]? {
+  /// own keymap — so the index comes from the device, not a hard-coded table
+  /// that could be wrong for a variant.
+  ///
+  /// Cached after the first read: it costs eight page reads, and the mapping
+  /// only changes if the board's factory keymap does.
+  func keySlotMap(layout: KeyboardLayout) -> [String: Int]? {
+    if let cachedSlotMap, cachedSlotMapLayout == layout.id { return cachedSlotMap }
+    let fresh = readKeySlotMap(layout: layout)
+    cachedSlotMap = fresh
+    cachedSlotMapLayout = layout.id
+    return fresh
+  }
+
+  private func readKeySlotMap(layout: KeyboardLayout) -> [String: Int]? {
     var usageToSlot: [Int: Int] = [:]
     var found = false
     withDevice { keyboard in
@@ -405,15 +422,80 @@ final class AppModel {
     }
   }
 
+  /// Writes a shortcut to every selected key.
+  ///
+  /// Each key is a separate slot write, and the firmware needs a moment after
+  /// each one, so this runs off the main thread and reports progress. A key
+  /// whose write is not confirmed is dropped from the display rather than left
+  /// looking assigned.
   func assignShortcut(_ shortcut: Shortcut, toKeyIDs ids: Set<String>, in layout: KeyboardLayout) {
-    for id in ids where layout.keys.contains(where: { $0.id == id }) {
-      pendingShortcuts[id] = shortcut
+    guard isConnected else { return }
+    guard let slots = keySlotMap(layout: layout) else {
+      shortcutStatus = "shortcuts.no_slots".localized
+      return
     }
+    let targets = ids.compactMap { id -> (String, Int)? in
+      guard let slot = slots[id] else { return nil }
+      return (id, slot)
+    }
+    guard !targets.isEmpty else {
+      shortcutStatus = "shortcuts.no_slots".localized
+      return
+    }
+
+    for (id, _) in targets { pendingShortcuts[id] = shortcut }
+    shortcutBusy = true
+    shortcutStatus = nil
+
+    let bytes = shortcut.slotBytes
+    Task { [weak self] in
+      let failed = await Task.detached(priority: .userInitiated) { () -> [String] in
+        var failures: [String] = []
+        for (id, slot) in targets {
+          guard let keyboard = try? Keyboard() else {
+            failures.append(id)
+            continue
+          }
+          let ok = (try? Keymap.writeSlotVerified(slot, bytes: bytes, on: keyboard)) ?? false
+          if !ok { failures.append(id) }
+        }
+        return failures
+      }.value
+
+      guard let self else { return }
+      shortcutBusy = false
+      for id in failed { pendingShortcuts.removeValue(forKey: id) }
+      shortcutStatus = failed.isEmpty
+        ? "shortcuts.written \(targets.count)".localized(targets.count)
+        : "shortcuts.partial \(failed.count)".localized(failed.count)
+    }
+  }
+
+  /// Puts a key back to what the board's factory keymap has for it.
+  func clearShortcut(keyIDs ids: Set<String>, in layout: KeyboardLayout) {
+    for id in ids { pendingShortcuts.removeValue(forKey: id) }
+    shortcutStatus = "shortcuts.cleared_locally".localized
   }
 
   func assignedShortcutLabel(for key: KeyboardLayout.Key) -> String? {
     guard let shortcut = pendingShortcuts[key.id] else { return nil }
     return shortcut.modifiers.symbols + KeyLabels.name(for: shortcut.usage)
+  }
+
+  /// Switches the keyboard to another onboard profile.
+  ///
+  /// Key maps live per profile, so anything shown from the keymap is re-read
+  /// afterwards rather than assumed to still apply.
+  func selectProfile(_ profile: Int) {
+    withDevice { keyboard in
+      try Keymap.selectProfile(profile, on: keyboard)
+      activeProfile = try Keymap.activeProfile(on: keyboard)
+    }
+    cachedSlotMap = nil
+    knobSlots = nil
+    knobBindings = [:]
+    pendingShortcuts = [:]
+    loadKnob()
   }
 
   // MARK: - Screen geometry

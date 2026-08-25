@@ -63,6 +63,16 @@ struct SettingsView: View {
           if let firmware = model.firmware {
             LabeledContent("settings.device.firmware", value: firmware)
           }
+          if let active = model.activeProfile {
+            Picker("settings.device.profile", selection: profileBinding(active)) {
+              ForEach(0..<3, id: \.self) { index in
+                Text("settings.device.profile.n \(index + 1)").tag(index)
+              }
+            }
+            Text("settings.device.profile.detail")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
           if profile.capabilities.screen != nil {
             screenSizeEditor
           }
@@ -189,6 +199,10 @@ struct SettingsView: View {
     ("128 × 128", 128, 128), ("240 × 135", 240, 135), ("240 × 240", 240, 240),
     ("160 × 80", 160, 80), ("320 × 172", 320, 172), ("128 × 160", 128, 160),
   ]
+
+  private func profileBinding(_ active: Int) -> Binding<Int> {
+    Binding(get: { active }, set: { model.selectProfile($0) })
+  }
 
   private var countingBinding: Binding<Bool> {
     Binding(

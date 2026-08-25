@@ -75,6 +75,7 @@ struct ShortcutsView: View {
       }
       .pickerStyle(.segmented)
       .labelsHidden()
+      .disabled(model.shortcutBusy)
 
       LazyVGrid(
         columns: [GridItem(.adaptive(minimum: 210), spacing: 8)], spacing: 8
@@ -129,12 +130,28 @@ struct ShortcutsView: View {
   }
 
   private var notice: some View {
-    Label("shortcuts.write_pending", systemImage: "info.circle")
-      .font(.caption)
-      .foregroundStyle(.secondary)
-      .padding(12)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 9))
+    HStack(spacing: 10) {
+      if model.shortcutBusy {
+        ProgressView().controlSize(.small)
+        Text("shortcuts.writing").font(.callout).foregroundStyle(.secondary)
+      } else if let status = model.shortcutStatus {
+        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+        Text(status).font(.callout).foregroundStyle(.secondary)
+      } else {
+        Image(systemName: "info.circle").foregroundStyle(.secondary)
+        Text("shortcuts.storage").font(.caption).foregroundStyle(.secondary)
+      }
+      Spacer()
+      if !selection.isEmpty && !model.shortcutBusy {
+        Button("shortcuts.clear_key") {
+          model.clearShortcut(keyIDs: selection, in: layout)
+        }
+        .buttonStyle(.link)
+      }
+    }
+    .padding(12)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 9))
   }
 
   // MARK: - Helpers

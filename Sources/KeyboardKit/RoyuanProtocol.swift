@@ -28,6 +28,7 @@ public enum Proto {
   public static let opSetKeymapSlot: UInt8 = 0x13
   /// Selects the active onboard profile (the board holds three).
   public static let opSetProfile: UInt8 = 0x05
+  public static let opGetProfile: UInt8 = 0x85
   /// Macro write; ids 0...49.
   public static let opSetMacro: UInt8 = 0x16
   public static let opGetMacro: UInt8 = 0x8B

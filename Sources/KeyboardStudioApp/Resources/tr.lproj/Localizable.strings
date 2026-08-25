@@ -142,7 +142,13 @@
 "shortcuts.key_placeholder" = "tuş";
 "shortcuts.assign" = "Ata";
 "shortcuts.custom_hint" = "Tek bir harf ya da rakam yaz; ya da Space için 0x2C gibi ham bir kod gir.";
-"shortcuts.write_pending" = "Atamalar şimdilik burada tutuluyor. Klavyeye yazılması, keymap yazma komutu donanımda kanıtlanana kadar açılmayacak — yanlış bir slot gerçek bir tuşu sessizce değiştirir.";
+"shortcuts.storage" = "Atamalar klavyenin kendi hafızasına yazılır; kabloyu çıkarsan da kalır, bu uygulama kapalıyken de çalışır.";
+"shortcuts.writing" = "Klavyeye yazılıyor…";
+"shortcuts.written" = "%lld tuşa yazıldı.";
+"shortcuts.partial" = "%lld tuş kabul edilmedi, değiştirilmeden bırakıldı.";
+"shortcuts.cleared_locally" = "Buradan temizlendi. Tuş, klavyede zaten ne varsa onu korur.";
+"shortcuts.clear_key" = "Temizle";
+"shortcuts.no_slots" = "Bu tuşlar klavyenin tuş haritasıyla eşleştirilemedi.";
 
 /* Ekran modları */
 "screen.mode" = "Klavyede göster";
@@ -186,3 +192,6 @@
 "settings.app_rules.add" = "Uygulama ekle…";
 "settings.app_rules.remove" = "Kaldır";
 "settings.app_rules.active" = "etkin";
+"settings.device.profile" = "Etkin profil";
+"settings.device.profile.n" = "Profil %lld";
+"settings.device.profile.detail" = "Klavye üç profil tutar. Tuş atamaları profile özeldir; ışık ve ekran ortaktır.";

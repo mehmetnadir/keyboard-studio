@@ -115,12 +115,24 @@ public enum Keymap {
     return try readSlot(page: page, index: index, on: fresh) == bytes
   }
 
+  /// Which onboard profile is currently active.
+  public static func activeProfile(on kb: Keyboard) throws -> Int? {
+    let reply = try kb.probeRaw([Proto.opGetProfile])
+    guard reply.count > 1, reply[0] == Proto.opGetProfile else { return nil }
+    return Int(reply[1])
+  }
+
   /// Selects which of the board's onboard profiles is active.
+  ///
+  /// Profiles hold key maps and Fn maps; lighting, debounce and sleep are
+  /// shared across all of them.
   public static func selectProfile(_ profile: Int, on kb: Keyboard) throws {
     guard (0...2).contains(profile) else {
       throw DeviceError.invalidFrame("profile \(profile) is out of range")
     }
     try kb.sendRaw([Proto.opSetProfile, UInt8(profile)])
+    // The vendor's client waits before doing anything else after this.
+    Thread.sleep(forTimeInterval: 0.5)
   }
 
   /// Current bindings for the three knob actions.
