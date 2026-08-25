@@ -84,3 +84,38 @@ The lesson worth keeping: when a bug appears to depend on build configuration,
 first prove the configurations differ under *identical* environment state. And
 when a trace at the very first line does not print, stop debugging the program
 and start debugging its launch.
+
+---
+
+## Follow-up: permission was being asked for after every update
+
+Symptom: after each rebuild macOS asked for Input Monitoring again, and until
+it was granted the statistics tab showed `IOReturn 0xe00002e2`
+(`kIOReturnNotPermitted`) and counted nothing.
+
+Two independent causes, both now fixed.
+
+**1. `install.sh` was deleting the grant itself.** It ran
+`tccutil reset All dev.keyboardstudio.app` on every install — added while
+chasing the launch bug, when a permission prompt was the cheap outcome and a
+lost hour was the expensive one. Once the launch bug was actually fixed (the
+sandbox), that line stopped being insurance and became the bug: every update
+revoked the user's own grant. Removed.
+
+**2. Ad-hoc signing gives a new identity on every build.** TCC keys a grant to
+a code identity. `codesign --sign -` produces a fresh one each time, so macOS
+genuinely saw each build as a different application — the previous grant was
+not merely forgotten, it belonged to something else. `bundle.sh` now picks up a
+`Developer ID Application` certificate when the machine has one and falls back
+to ad-hoc otherwise, printing which it used. With a real certificate the
+identity is stable and the grant survives rebuilds.
+
+Verify with `codesign -dv --verbose=2 "/Applications/Keyboard Studio.app"` —
+`Authority=Developer ID Application: …` means permissions will stick;
+`Signature=adhoc` means they will not.
+
+**Still open:** the App Sandbox is off. It was disabled because an ad-hoc
+signed app cannot get a container. A Developer ID build can, so the sandbox
+could now be restored — but it needs `com.apple.security.device.usb` to keep
+HID access, and that combination is untested here. Not changed while the app is
+working; noted so it is not forgotten.

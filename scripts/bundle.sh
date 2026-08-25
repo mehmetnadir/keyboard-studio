@@ -33,17 +33,35 @@ for lproj in "$ROOT/Sources/KeyboardStudioApp/Resources"/*.lproj; do
   [ -d "$lproj" ] && cp -R "$lproj" "$APP/Contents/Resources/"
 done
 
-# Ad-hoc signature with the sandbox entitlements. --deep is deliberately not
-# used (Apple discourages it), so nested bundles are signed first, innermost
-# outwards — an unsigned nested bundle makes the outer signature invalid.
-# Re-signing changes the identity, so macOS may ask for permission again.
+# Sign with a Developer ID when one is available, falling back to ad-hoc.
+#
+# This is not cosmetic. An ad-hoc signature gets a fresh code identity on every
+# build, so macOS treats each install as a different app and asks for Input
+# Monitoring again — and the permission granted to the previous build is dead.
+# A real certificate keeps the identity stable across rebuilds, so the grant
+# survives. It is also what allows the App Sandbox to work at all: macOS will
+# not create a container for an ad-hoc signed app.
+IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+  | grep -m1 'Developer ID Application' \
+  | sed -E 's/.*"(.*)".*/\1/')"
+if [ -z "$IDENTITY" ]; then
+  IDENTITY="-"
+  echo "No Developer ID found — signing ad-hoc. macOS will ask for permissions"
+  echo "again after every rebuild; that is a property of ad-hoc signing."
+else
+  echo "Signing as: $IDENTITY"
+fi
+
+# --deep is deliberately not used (Apple discourages it), so nested bundles are
+# signed first, innermost outwards — an unsigned nested bundle would make the
+# outer signature invalid.
 for nested in "$APP/Contents/MacOS"/*.bundle; do
-  [ -e "$nested" ] && codesign --force --sign - "$nested"
+  [ -e "$nested" ] && codesign --force --sign "$IDENTITY" "$nested"
 done
 
 codesign --force --options runtime \
   --entitlements "$ROOT/Resources/KeyboardStudio.entitlements" \
-  --sign - "$APP"
+  --sign "$IDENTITY" "$APP"
 
 codesign --verify --strict "$APP" && echo "Signature verified" 
 

@@ -58,6 +58,13 @@ public enum Screen {
   /// memory; 255 is the protocol maximum.
   public static let maxFrames = 30
 
+  /// How many stored image slots the panel has.
+  ///
+  /// Images are written into a numbered slot and stay there. There is no
+  /// command to display a given slot — that choice is made from the keyboard's
+  /// own on-screen menu, which is what the knob opens.
+  public static let imageSlots = 5
+
   /// Geometry for a connected keyboard, falling back to the defaults above.
   public static func geometry(for keyboard: Keyboard) -> (width: Int, height: Int, maxFrames: Int) {
     guard let screen = keyboard.screen else { return (width, height, maxFrames) }

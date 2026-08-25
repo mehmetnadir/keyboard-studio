@@ -19,12 +19,10 @@ sleep 1
 rm -rf "$DEST"
 cp -R "$ROOT/build/$APP" "$DEST"
 
-# Keep TCC, the sandbox container and LaunchServices in agreement. If they
-# disagree — which happens when a container is removed by hand, or an app is
-# re-signed repeatedly — the app exits at launch with no crash report and no
-# log entry. Resetting costs a permission prompt; not resetting costs an hour.
-tccutil reset All dev.keyboardstudio.app >/dev/null 2>&1 || true
-rm -rf "$HOME/Library/Containers/dev.keyboardstudio.app" 2>/dev/null || true
+# Deliberately NOT resetting TCC here. An earlier version did, which threw away
+# the user's Input Monitoring grant on every single install — the permission
+# had to be given again after each update, and counting silently stopped in
+# between. Re-register with LaunchServices only; that is harmless.
 LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 [ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$DEST" >/dev/null 2>&1 || true
 
