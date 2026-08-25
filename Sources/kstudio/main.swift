@@ -47,7 +47,7 @@ func usage() -> Never {
       kstudio color <hex|name> [opts]       main light solid color
       kstudio effect <name> [opts]          main light effect (rainbow by default)
       kstudio side <hex|name> [opts]        side strip color
-      kstudio screen <image|gif>            upload to the 128x128 TFT screen
+      kstudio screen <image|gif>            upload an image or GIF to the screen
       kstudio screen --test                 upload RGBW test pattern
       kstudio screen --stats                show today's typing stats on the keyboard
       kstudio effects                       list effect names
@@ -63,9 +63,9 @@ func usage() -> Never {
       --speed 0-5    effect speed (default 3)
       --color <hex>  fixed color for `effect` (disables rainbow)
 
-    SCREEN OPTIONS (the panel is 128x128; sources are centre-cropped by default):
+    SCREEN OPTIONS (panel size comes from the device profile; centre-cropped by default):
       --fit          fit the whole image, padding the short edge
-      --stretch      stretch to the square, distorting non-square sources
+      --stretch      stretch to the panel, distorting the source's proportions
 
     The keyboard must be connected by USB cable (back switches: Mac + USB).
     Settings persist on the keyboard after you switch back to Bluetooth.
@@ -196,7 +196,9 @@ do {
     } else if args[1] == "--stats" {
       let store = try StatsStore(path: StatsStore.defaultPath())
       defer { store.close() }
-      try Screen.writeImage(try StatsCard.today(store: store), on: kb)
+      let panel = Screen.geometry(for: kb)
+      try Screen.writeImage(
+        try StatsCard.today(store: store, width: panel.width, height: panel.height), on: kb)
       print("Today's statistics uploaded to the keyboard screen.")
     } else {
       let mode: ContentMode =

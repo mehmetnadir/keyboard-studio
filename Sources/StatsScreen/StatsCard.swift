@@ -4,7 +4,7 @@ import Foundation
 import KeyboardKit
 import StatsCore
 
-/// Renders typing statistics as a 128×128 frame for the keyboard's own screen.
+/// Renders typing statistics as a frame for the keyboard's own screen.
 ///
 /// No other keyboard software puts your own numbers on the device; this is the
 /// payoff for having both halves of the project in one app.
@@ -26,14 +26,18 @@ public enum StatsCard {
   }
 
   /// Builds today's card: press count, active minutes, streak, 7-day sparkline.
-  public static func today(store: StatsStore, theme: Theme = Theme()) throws -> ScreenFrame {
+  public static func today(
+    store: StatsStore, theme: Theme = Theme(),
+    width: Int = Screen.width, height: Int = Screen.height
+  ) throws -> ScreenFrame {
     let today = todayLocal()
     let stat = try store.dayStat(today)
     let records = try store.records()
     let recent = try lastSevenDays(store: store, endingOn: today)
     return render(
       presses: stat?.presses ?? 0, activeMinutes: stat?.activeMinutes ?? 0,
-      streak: records.currentStreak, sparkline: recent, theme: theme)
+      streak: records.currentStreak, sparkline: recent, theme: theme,
+      width: width, height: height)
   }
 
   static func lastSevenDays(store: StatsStore, endingOn day: String) throws -> [Int] {
@@ -50,44 +54,50 @@ public enum StatsCard {
 
   /// Draws a card from explicit values — used for previews and tests.
   public static func render(
-    presses: Int, activeMinutes: Int, streak: Int, sparkline: [Int], theme: Theme = Theme()
+    presses: Int, activeMinutes: Int, streak: Int, sparkline: [Int], theme: Theme = Theme(),
+    width: Int = Screen.width, height: Int = Screen.height
   ) -> ScreenFrame {
-    Canvas.draw(background: theme.background) { context in
-      // Vertical layout, measured from the top of the 128 px panel.
+    Canvas.draw(background: theme.background, width: width, height: height) { context in
+      // Vertical layout, measured from the top of the panel.
       Canvas.text(
-        "TODAY", in: context, topY: 9, size: 11, color: theme.text, alpha: 0.55, tracking: 1.6)
+        "TODAY", in: context, topY: 9, size: 11, color: theme.text, alpha: 0.55, tracking: 1.6,
+        width: width, height: height)
 
       // Press count: shrink the face when the number gets long so it always fits.
       let countText = format(presses)
       let countSize: CGFloat = countText.count > 7 ? 26 : (countText.count > 5 ? 32 : 40)
       Canvas.text(
-        countText, in: context, topY: 24, size: countSize, color: theme.text, weight: .semibold)
+        countText, in: context, topY: 24, size: countSize, color: theme.text, weight: .semibold,
+        width: width, height: height)
 
       let belowCount = 24 + countSize + 4
       Canvas.text(
         "\(activeMinutes) active min", in: context, topY: belowCount, size: 12,
-        color: theme.text, alpha: 0.55)
+        color: theme.text, alpha: 0.55, width: width, height: height)
       if streak > 0 {
         Canvas.text(
           "\(streak) day streak", in: context, topY: belowCount + 16, size: 12,
-          color: theme.accent, weight: .medium)
+          color: theme.accent, weight: .medium, width: width, height: height)
       }
 
       drawSparkline(
-        sparkline, in: context,
+        sparkline, in: context, panelWidth: width,
         accent: CGColor(red: theme.accent.r, green: theme.accent.g, blue: theme.accent.b, alpha: 1),
         dim: CGColor(red: theme.text.r, green: theme.text.g, blue: theme.text.b, alpha: 0.55))
     }
   }
 
   private static func drawSparkline(
-    _ values: [Int], in context: CGContext, accent: CGColor, dim: CGColor
+    _ values: [Int], in context: CGContext, panelWidth: Int, accent: CGColor, dim: CGColor
   ) {
     guard !values.isEmpty else { return }
     let baseline: CGFloat = 10  // bottom-left space: 10 px above the panel edge
     let maxHeight: CGFloat = 30
-    let width: CGFloat = 12
+    // Bars stretch to fill whatever width the panel actually has, so a wide
+    // screen does not leave the chart huddled in one corner.
+    let available = CGFloat(panelWidth) - 20
     let gap: CGFloat = 4
+    let width = max(6, (available - gap * CGFloat(values.count - 1)) / CGFloat(values.count))
     let peak = max(values.max() ?? 1, 1)
 
     for (index, value) in values.enumerated() {

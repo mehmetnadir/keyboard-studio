@@ -58,6 +58,30 @@ enum KeymapCommand {
       }
       return
     }
+    if let index = args.firstIndex(of: "--set-slot"), args.count > index + 2 {
+      // kstudio keymap --set-slot <slot> <4 hex bytes|clear>
+      guard let slot = Int(args[index + 1]) else {
+        errPrint("usage: kstudio keymap --set-slot <slot> <8 hex chars|clear>")
+        exit(64)
+      }
+      let spec = args[index + 2]
+      var bytes: [UInt8] = [0, 0, 0, 0]
+      if spec != "clear" {
+        guard spec.count == 8, let value = UInt32(spec, radix: 16) else {
+          errPrint("expected 8 hex characters, e.g. 0300e200, or 'clear'")
+          exit(64)
+        }
+        bytes = [
+          UInt8((value >> 24) & 0xFF), UInt8((value >> 16) & 0xFF),
+          UInt8((value >> 8) & 0xFF), UInt8(value & 0xFF),
+        ]
+      }
+      let kb = try Keyboard()
+      let verified = try Keymap.writeSlotVerified(slot, bytes: bytes, on: kb)
+      print("slot \(slot) -> \(bytes.map { String(format: "%02x", $0) }.joined()): "
+        + (verified ? "✅ verified" : "✗ not accepted"))
+      return
+    }
     if args.contains("--restore-knob") {
       try KeymapRestore.run()
       return

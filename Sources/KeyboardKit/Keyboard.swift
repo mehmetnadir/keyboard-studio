@@ -59,9 +59,17 @@ public final class Keyboard {
   /// This is the only reliable way to tell models apart in this family: one
   /// USB vendor/product pair is reused across dozens of keyboards.
   public func deviceID() throws -> Int? {
-    let f = try query([Proto.opGetDeviceID])
-    guard f.count > 4, f[0] == Proto.opGetDeviceID else { return nil }
-    return Int(f[1]) | Int(f[2]) << 8 | Int(f[3]) << 16 | Int(f[4]) << 24
+    // Retried: the first query after other traffic can come back carrying the
+    // previous command's reply, and a single miss here would refuse a write on
+    // a keyboard that is in fact the right one.
+    for attempt in 0..<3 {
+      let f = try query([Proto.opGetDeviceID])
+      if f.count > 4, f[0] == Proto.opGetDeviceID {
+        return Int(f[1]) | Int(f[2]) << 8 | Int(f[3]) << 16 | Int(f[4]) << 24
+      }
+      if attempt < 2 { Thread.sleep(forTimeInterval: 0.08) }
+    }
+    return nil
   }
 
   /// Confirms the board really is the model this profile describes.

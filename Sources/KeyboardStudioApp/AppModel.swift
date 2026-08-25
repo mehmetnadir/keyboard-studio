@@ -771,7 +771,10 @@ final class AppModel {
     }
     do {
       try monitor?.flush()
-      let card = try StatsCard.today(store: store)
+      let panel = profile?.capabilities.screen
+      let card = try StatsCard.today(
+        store: store, width: panel?.width ?? Screen.width,
+        height: panel?.height ?? Screen.height)
       try await Task.detached(priority: .utility) {
         let keyboard = try Keyboard()
         defer { keyboard.close() }
