@@ -195,3 +195,8 @@
 "settings.device.profile" = "Etkin profil";
 "settings.device.profile.n" = "Profil %lld";
 "settings.device.profile.detail" = "Klavye üç profil tutar. Tuş atamaları profile özeldir; ışık ve ekran ortaktır.";
+"knob.fn_section" = "Fn basılıyken";
+"knob.fn_detail" = "Klavye, Fn basılıyken geçerli olan ikinci bir atama seti tutuyor. Böylece düğme iki farklı iş yapabiliyor — Mac tarafında hiçbir kısayol mantığı gerekmeden.";
+"knob.fn_turn_left" = "Fn + sola çevir";
+"knob.fn_turn_right" = "Fn + sağa çevir";
+"knob.fn_press" = "Fn + bas";

@@ -93,6 +93,9 @@ final class AppModel {
   // Knob
   var knobSlots: Knob.SlotMap?
   var knobBindings: [Knob.Action: Knob.Binding] = [:]
+  /// What the knob does while Fn is held — a second set of assignments the
+  /// firmware keeps on its own layer.
+  var knobFnBindings: [Knob.Action: Knob.Binding] = [:]
   var knobError: String?
   var knobBusy = false
 
@@ -569,6 +572,13 @@ final class AppModel {
       }
       knobSlots = slots
       knobBindings = try Keymap.readKnob(slots, on: keyboard)
+
+      let fnPage = try Keymap.readFnPage(Keymap.location(of: slots.turnLeft).page, on: keyboard)
+      for action in Knob.Action.allCases {
+        let index = Keymap.location(of: slots.slot(for: action)).index
+        knobFnBindings[action] = index < fnPage.count
+          ? Knob.Binding(slotBytes: fnPage[index]) : .unassigned
+      }
       knobError = nil
     }
   }
@@ -579,11 +589,11 @@ final class AppModel {
   /// same connection returns a cached reply and would report success either
   /// way. On failure the previous binding is put back on screen, so the UI
   /// never claims something the keyboard did not accept.
-  func setKnob(action: Knob.Action, mediaCode: Int?) {
+  func setKnob(action: Knob.Action, mediaCode: Int?, fn: Bool = false) {
     guard let slots = knobSlots else { return }
-    let previous = knobBindings[action] ?? .unassigned
+    let previous = (fn ? knobFnBindings[action] : knobBindings[action]) ?? .unassigned
     let binding = mediaCode.map { Knob.Binding.media(code: $0) } ?? .unassigned
-    knobBindings[action] = binding
+    if fn { knobFnBindings[action] = binding } else { knobBindings[action] = binding }
     knobError = nil
     knobBusy = true
 
@@ -592,6 +602,18 @@ final class AppModel {
     Task { [weak self] in
       let verified = await Task.detached(priority: .userInitiated) { () -> Bool in
         guard let keyboard = try? Keyboard() else { return false }
+        if fn {
+          try? Keymap.writeFnSlot(slot, bytes: bytes, on: keyboard)
+          keyboard.close()
+          // Same re-open requirement as the main keymap: a read on the old
+          // connection would return the value from before the write.
+          try? await Task.sleep(for: .milliseconds(400))
+          guard let fresh = try? Keyboard() else { return false }
+          defer { fresh.close() }
+          let page = (try? Keymap.readFnPage(Keymap.location(of: slot).page, on: fresh)) ?? []
+          let index = Keymap.location(of: slot).index
+          return index < page.count && page[index] == bytes
+        }
         return (try? Keymap.writeSlotVerified(slot, bytes: bytes, on: keyboard)) ?? false
       }.value
 
@@ -600,7 +622,7 @@ final class AppModel {
       if verified {
         knobError = nil
       } else {
-        knobBindings[action] = previous
+        if fn { knobFnBindings[action] = previous } else { knobBindings[action] = previous }
         knobError = "knob.write_failed".localized
       }
     }

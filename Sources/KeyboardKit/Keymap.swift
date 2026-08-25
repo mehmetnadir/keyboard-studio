@@ -115,6 +115,35 @@ public enum Keymap {
     return try readSlot(page: page, index: index, on: fresh) == bytes
   }
 
+  /// Writes one slot on the Fn layer — what a key does while Fn is held.
+  ///
+  /// Same shape as the main keymap write with a different opcode. Slot numbers
+  /// mirror the main layer, so the knob is at the same positions.
+  public static func writeFnSlot(
+    _ slot: Int, bytes: [UInt8], layer: Int = 0, on kb: Keyboard
+  ) throws {
+    guard bytes.count == slotSize else {
+      throw DeviceError.invalidFrame("a keymap slot is \(slotSize) bytes")
+    }
+    guard try kb.verifyIdentity() else { throw DeviceError.identityMismatch }
+
+    var packet = [UInt8](repeating: 0, count: Proto.reportLen)
+    packet[0] = Proto.opSetFnSlot
+    packet[1] = UInt8(clamping: layer)
+    packet[2] = UInt8(clamping: slot)
+    for (offset, byte) in bytes.enumerated() { packet[8 + offset] = byte }
+    try kb.sendRaw(packet)
+    Thread.sleep(forTimeInterval: 0.12)
+  }
+
+  /// Reads one page of the Fn layer.
+  public static func readFnPage(_ page: Int, on kb: Keyboard) throws -> [[UInt8]] {
+    let reply = try kb.probeRaw([Proto.opGetFn, 0, UInt8(clamping: page)])
+    return stride(from: 0, to: reply.count - slotSize + 1, by: slotSize).map {
+      Array(reply[$0..<($0 + slotSize)])
+    }
+  }
+
   /// Which onboard profile is currently active.
   public static func activeProfile(on kb: Keyboard) throws -> Int? {
     let reply = try kb.probeRaw([Proto.opGetProfile])

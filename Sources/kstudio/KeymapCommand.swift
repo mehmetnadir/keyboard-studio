@@ -9,6 +9,55 @@ import StatsCore
 /// This command only reads.
 enum KeymapCommand {
   static func run(_ args: [String]) throws {
+    if args.contains("--fn-test") {
+      // Try assigning Fn + knob-press to Next Track, then verify with a fresh
+      // connection. The Fn layer's knob slots read as empty, so a wrong guess
+      // here changes nothing anyone uses.
+      let slot = 98
+      let nextTrack: [UInt8] = [0x03, 0x00, 0xB5, 0x00]
+      do {
+        let kb = try Keyboard()
+        try Keymap.writeFnSlot(slot, bytes: nextTrack, on: kb)
+        kb.close()
+      }
+      Thread.sleep(forTimeInterval: 0.5)
+      let verify = try Keyboard()
+      defer { verify.close() }
+      let page = try Keymap.readFnPage(6, on: verify)
+      let after = page.indices.contains(2) ? page[2] : []
+      let hex = after.map { String(format: "%02x", $0) }.joined()
+      print("Fn slot \(slot) after write: \(hex)")
+      print(after == nextTrack
+        ? "✅ Fn-layer write works — Fn + knob press is now Next Track"
+        : "✗ not accepted; the Fn layer is unchanged")
+      return
+    }
+    if args.contains("--fn") {
+      let kb = try Keyboard()
+      defer { kb.close() }
+      print("Fn layer read (0x90) — is there a second layer to assign?")
+      print(String(repeating: "─", count: 60))
+      for page in 0..<3 {
+        guard let reply = try? kb.probeRaw([0x90, 0, UInt8(page)]) else {
+          print("  page \(page): no reply")
+          continue
+        }
+        let hex = reply.prefix(24).map { String(format: "%02x", $0) }.joined(separator: " ")
+        print("  page \(page): \(hex)")
+      }
+      // The knob's slots on the Fn layer, if it mirrors the main keymap.
+      if let reply = try? kb.probeRaw([0x90, 0, 6]) {
+        let slots = stride(from: 0, to: min(reply.count, 16), by: 4).map {
+          Array(reply[$0..<min($0 + 4, reply.count)])
+        }
+        print("\n  page 6 (where the knob lives on the main layer):")
+        for (index, bytes) in slots.enumerated() {
+          let global = 96 + index
+          print("    slot \(global): \(bytes.map { String(format: "%02x", $0) }.joined())")
+        }
+      }
+      return
+    }
     if args.contains("--restore-knob") {
       try KeymapRestore.run()
       return

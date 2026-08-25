@@ -34,6 +34,7 @@ public enum Proto {
   public static let opGetMacro: UInt8 = 0x8B
   /// Fn-layer single-slot write.
   public static let opSetFnSlot: UInt8 = 0x15
+  public static let opGetFn: UInt8 = 0x90
   static let opGetKBOption: UInt8 = 0x86
   static let opSetKBOption: UInt8 = 0x06
   static let opSetLEDParam: UInt8 = 0x07

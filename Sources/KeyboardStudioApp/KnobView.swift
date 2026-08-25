@@ -14,8 +14,19 @@ struct KnobView: View {
             .foregroundStyle(.secondary)
         } else if let slots = model.knobSlots {
           ForEach(Knob.Action.allCases) { action in
-            KnobActionRow(action: action, slotIndex: slots.slot(for: action))
+            KnobActionRow(action: action, slotIndex: slots.slot(for: action), fn: false)
           }
+
+          Text("knob.fn_section")
+            .font(.headline)
+            .padding(.top, 6)
+          Text("knob.fn_detail")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          ForEach(Knob.Action.allCases) { action in
+            KnobActionRow(action: action, slotIndex: slots.slot(for: action), fn: true)
+          }
+
           footnote
         } else if model.isConnected {
           ProgressView().controlSize(.small)
@@ -72,6 +83,7 @@ private struct KnobActionRow: View {
   @Environment(AppModel.self) private var model
   let action: Knob.Action
   let slotIndex: Int
+  let fn: Bool
 
   var body: some View {
     HStack(spacing: 14) {
@@ -82,7 +94,7 @@ private struct KnobActionRow: View {
 
       VStack(alignment: .leading, spacing: 2) {
         Text(title).font(.headline)
-        Text(describe(model.knobBindings[action] ?? .unassigned))
+        Text(describe((fn ? model.knobFnBindings[action] : model.knobBindings[action]) ?? .unassigned))
           .font(.callout)
           .foregroundStyle(.secondary)
       }
@@ -110,17 +122,21 @@ private struct KnobActionRow: View {
   private var binding: Binding<Int> {
     Binding(
       get: {
-        if case .media(let code) = model.knobBindings[action] ?? .unassigned { return code }
+        let current = (fn ? model.knobFnBindings[action] : model.knobBindings[action]) ?? .unassigned
+        if case .media(let code) = current { return code }
         return -1
       },
-      set: { model.setKnob(action: action, mediaCode: $0 == -1 ? nil : $0) })
+      set: { model.setKnob(action: action, mediaCode: $0 == -1 ? nil : $0, fn: fn) })
   }
 
   private var title: LocalizedStringKey {
-    switch action {
-    case .turnLeft: "knob.turn_left"
-    case .turnRight: "knob.turn_right"
-    case .press: "knob.press"
+    switch (action, fn) {
+    case (.turnLeft, false): "knob.turn_left"
+    case (.turnRight, false): "knob.turn_right"
+    case (.press, false): "knob.press"
+    case (.turnLeft, true): "knob.fn_turn_left"
+    case (.turnRight, true): "knob.fn_turn_right"
+    case (.press, true): "knob.fn_press"
     }
   }
 

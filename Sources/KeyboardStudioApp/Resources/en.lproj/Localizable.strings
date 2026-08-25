@@ -195,3 +195,8 @@
 "settings.device.profile" = "Active profile";
 "settings.device.profile.n" = "Profile %lld";
 "settings.device.profile.detail" = "The keyboard stores three. Key assignments are per profile; lighting and the screen are shared.";
+"knob.fn_section" = "While holding Fn";
+"knob.fn_detail" = "The keyboard keeps a second set of assignments for when Fn is held, so the knob can do two different things without any modifier logic on the Mac.";
+"knob.fn_turn_left" = "Fn + turn left";
+"knob.fn_turn_right" = "Fn + turn right";
+"knob.fn_press" = "Fn + press";
