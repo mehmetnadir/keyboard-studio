@@ -94,6 +94,61 @@ public enum Screen {
     try sendChunks(kb, bytes, frameIndex: layer, allFrames: 1, delay: 0)
   }
 
+  /// Corner-coded orientation test.
+  ///
+  /// A panel accepts any frame size without complaint, so a picture that
+  /// merely "looks full" proves nothing. This pattern makes one photograph
+  /// answer three questions at once:
+  ///
+  /// * **Is the width right?** The stripes run straight down. A wrong width
+  ///   shears them into diagonals, because each column lands one row off from
+  ///   the last.
+  /// * **Is it rotated?** The four corners are different colours — red, green,
+  ///   blue, yellow, clockwise from top-left — so a rotated or transposed
+  ///   frame shows them in the wrong places.
+  /// * **Is it cropped?** The white border touches all four edges and the top
+  ///   bar is thicker than the left one. Missing corners or a missing bar mean
+  ///   the device is discarding part of the frame.
+  public static func orientationPattern(width: Int, height: Int) -> ScreenFrame {
+    var rgb = [UInt8](repeating: 0, count: width * height * 3)
+    func plot(_ x: Int, _ y: Int, _ color: (UInt8, UInt8, UInt8)) {
+      guard x >= 0, x < width, y >= 0, y < height else { return }
+      let i = (y * width + x) * 3
+      (rgb[i], rgb[i + 1], rgb[i + 2]) = color
+    }
+
+    // Vertical stripes every 16 px: the shear detector.
+    for x in stride(from: 0, to: width, by: 16) {
+      for y in 0..<height { plot(x, y, (60, 60, 70)) }
+    }
+
+    let box = max(8, min(width, height) / 4)
+    let corners: [((Int, Int), (UInt8, UInt8, UInt8))] = [
+      ((0, 0), (255, 40, 40)),                       // top-left     red
+      ((width - box, 0), (40, 220, 60)),             // top-right    green
+      ((0, height - box), (60, 110, 255)),           // bottom-left  blue
+      ((width - box, height - box), (255, 210, 40)),  // bottom-right yellow
+    ]
+    for ((originX, originY), color) in corners {
+      for y in originY..<(originY + box) {
+        for x in originX..<(originX + box) { plot(x, y, color) }
+      }
+    }
+
+    // Asymmetric border: a 6 px top bar against a 2 px left bar tells top from
+    // bottom even in a photograph taken at an angle.
+    let white: (UInt8, UInt8, UInt8) = (255, 255, 255)
+    for x in 0..<width {
+      for y in 0..<6 { plot(x, y, white) }
+      plot(x, height - 1, white)
+    }
+    for y in 0..<height {
+      for x in 0..<2 { plot(x, y, white) }
+      plot(width - 1, y, white)
+    }
+    return ScreenFrame(rgb: rgb, width: width, height: height)
+  }
+
   /// Fills `width`×`height` with one colour — the tile used for measuring.
   public static func solid(_ color: (UInt8, UInt8, UInt8), width: Int, height: Int)
     -> ScreenFrame

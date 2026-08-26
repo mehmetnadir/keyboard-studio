@@ -75,7 +75,10 @@ struct ScreenView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
-      Text("The panel is 128×128 and shows 65 536 colours. GIFs upload up to 30 frames.")
+      // The size has to come from the profile, not a literal — this panel is
+      // not 128×128, and a hardcoded number here quietly contradicts the
+      // Settings tab where the user just corrected it.
+      Text("\(model.screenWidthText)×\(model.screenHeightText) · " + "screen.panel_info".localized)
         .font(.caption)
         .foregroundStyle(.tertiary)
       Spacer()

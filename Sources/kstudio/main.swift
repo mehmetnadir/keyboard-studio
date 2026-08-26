@@ -49,6 +49,7 @@ func usage() -> Never {
       kstudio side <hex|name> [opts]        side strip color
       kstudio screen <image|gif>            upload an image or GIF to the screen
       kstudio screen --test                 upload RGBW test pattern
+      kstudio screen --orient [--size WxH]  find the panel's real size and rotation
       kstudio screen --stats                show today's typing stats on the keyboard
       kstudio effects                       list effect names
       kstudio probe                         ask the device about itself (read-only)
@@ -158,7 +159,7 @@ do {
     if args[1] == "--test" {
       try Screen.writeImage(Screen.testPattern(), on: kb)
       print("Test pattern uploaded.")
-    } else if args[1] == "--ruler" || args[1] == "--bands" {
+    } else if args[1] == "--ruler" || args[1] == "--bands" || args[1] == "--orient" {
       // Optional WxH so the real panel size can be discovered by trying sizes.
       let panel = Screen.geometry(for: kb)
       var frameWidth = panel.width
@@ -170,11 +171,25 @@ do {
         }
         (frameWidth, frameHeight) = (parts[0], parts[1])
       }
-      let frame = args[1] == "--bands"
-        ? Screen.bandPattern(width: frameWidth, height: frameHeight)
-        : Screen.rulerPattern(width: frameWidth, height: frameHeight)
+      let frame: ScreenFrame
+      switch args[1] {
+      case "--bands": frame = Screen.bandPattern(width: frameWidth, height: frameHeight)
+      case "--orient": frame = Screen.orientationPattern(width: frameWidth, height: frameHeight)
+      default: frame = Screen.rulerPattern(width: frameWidth, height: frameHeight)
+      }
       try Screen.writeImage(frame, on: kb)
-      if args[1] == "--bands" {
+      if args[1] == "--orient" {
+        print("""
+          Orientation test uploaded at \(frameWidth)×\(frameHeight).
+          Look at the panel and read off three things:
+            • stripes straight down     → the width is correct
+              stripes leaning/diagonal  → the width is wrong
+            • corners red green         → the frame is the right way round
+                      blue yellow
+            • white border on all four edges, thick bar at the TOP
+              missing edge or corner    → the device is cropping the frame
+          """)
+      } else if args[1] == "--bands" {
         print(
           """
           Colour bands uploaded at \(frameWidth)×\(frameHeight), 32 px per band.
