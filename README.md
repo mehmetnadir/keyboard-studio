@@ -6,6 +6,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/mehmetnadir/keyboard-studio/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mehmetnadir/keyboard-studio/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg">
   <img alt="Platform: macOS 14+" src="https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey.svg">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-orange.svg">
