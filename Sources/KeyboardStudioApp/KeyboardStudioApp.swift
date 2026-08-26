@@ -1,3 +1,5 @@
+import KeyboardKit
+import StatsCore
 import SwiftUI
 
 /// Brings the window up on launch and when the Dock icon is clicked.
@@ -36,8 +38,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 }
 
+/// Running the app binary with `--hid-diagnose` prints which HID interfaces
+/// will open, then exits without showing a window.
+///
+/// This belongs in the app rather than the CLI: macOS grants Input Monitoring
+/// to a code identity, and it is the app bundle that has it. The same check
+/// run from `kstudio` answers a different question — whether the CLI was
+/// granted permission — which is not the question when the app is the thing
+/// that is not counting.
+private func runDiagnosticsIfRequested() {
+  // Counts for a few seconds and reports, so "is it counting?" can be answered
+  // with a number instead of by watching a panel and hoping.
+  if CommandLine.arguments.contains("--count-test") {
+    do {
+      // A temporary store: this must not fold test keystrokes into the real
+      // statistics, and it must not touch the file the app has open.
+      let store = try StatsStore(
+        path: URL(fileURLWithPath: NSTemporaryDirectory())
+          .appendingPathComponent("keyboard-studio-counttest.sqlite").path)
+      let monitor = KeyMonitor(store: store)
+      try monitor.start()
+      print("Monitoring \(monitor.deviceCount) interface(s). Type for 10 seconds…")
+      RunLoop.main.run(until: Date().addingTimeInterval(10))
+      let counted = monitor.pendingPressCount
+      monitor.stop()
+      print(counted > 0
+        ? "Counted \(counted) presses. Counting works."
+        : "Counted nothing. Either nothing was typed, or the presses are not reaching us.")
+    } catch {
+      print("Could not start: \(error)")
+    }
+    exit(0)
+  }
+
+  guard CommandLine.arguments.contains("--hid-diagnose") else { return }
+  try? HIDDiagnostics.run()
+  if CommandLine.arguments.contains("--all") {
+    print("")
+    try? HIDDiagnostics.runAllKeyboards()
+  }
+  exit(0)
+}
+
 @main
 struct KeyboardStudioApp: App {
+  init() { runDiagnosticsIfRequested() }
+
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
   @State private var model = AppModel()
 

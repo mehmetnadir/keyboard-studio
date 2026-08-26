@@ -57,6 +57,7 @@ func usage() -> Never {
       kstudio screen --stats                show today's typing stats on the keyboard
       kstudio effects                       list effect names
       kstudio probe                         ask the device about itself (read-only)
+      kstudio hid                           which HID interfaces will open, one by one
       kstudio measure                       find the panel's real resolution
       kstudio keymap                        read the keymap layout (read-only)
       kstudio stats                         typing statistics summary
@@ -91,6 +92,9 @@ do {
 
   case "card":
     try CardCommand.run(args)
+
+  case "hid":
+    try HIDDiagnostics.run()
 
   case "probe":
     try ProbeCommand.run()

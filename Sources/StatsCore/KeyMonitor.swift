@@ -144,15 +144,38 @@ public final class KeyMonitor: @unchecked Sendable {
     IOHIDManagerScheduleWithRunLoop(
       manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
 
-    let result = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-    guard result == kIOReturnSuccess else {
+    // Open the interfaces one at a time instead of calling IOHIDManagerOpen.
+    //
+    // The manager opens every match at once and reports a single result, so one
+    // refusal loses all of them. That is not hypothetical: a keyboard-remapping
+    // driver such as Karabiner-Elements seizes the keyboard interfaces on the
+    // machine — including the built-in one — and this board exposes a second
+    // keyboard interface that stays available. Counting works fine through
+    // whichever interface will open, and refusing to count because a *different*
+    // one is busy helps nobody.
+    var devices = 0
+    var lastRefusal = kIOReturnSuccess
+    if let matched = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> {
+      for device in matched {
+        let opened = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        guard opened == kIOReturnSuccess else {
+          lastRefusal = opened
+          continue
+        }
+        IOHIDDeviceRegisterInputValueCallback(device, keyMonitorInputCallback, context)
+        IOHIDDeviceScheduleWithRunLoop(
+          device, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
+        devices += 1
+      }
+    }
+
+    guard devices > 0 else {
       IOHIDManagerUnscheduleFromRunLoop(
         manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
       reference.release()
-      throw MonitorError.inputMonitoringDenied(result)
+      throw MonitorError.inputMonitoringDenied(
+        lastRefusal == kIOReturnSuccess ? kIOReturnNoDevice : lastRefusal)
     }
-
-    let devices = (IOHIDManagerCopyDevices(manager) as? Set<AnyHashable>)?.count ?? 0
     stateLock.withLock {
       self.manager = manager
       self.selfReference = reference
@@ -160,6 +183,17 @@ public final class KeyMonitor: @unchecked Sendable {
       self.matchedDevices = devices
     }
     startTimer(interval: flushInterval)
+  }
+
+  /// How many HID interfaces are actually being listened to.
+  public var deviceCount: Int {
+    stateLock.withLock { matchedDevices }
+  }
+
+  /// Presses tallied but not yet written to the store — used to confirm that
+  /// keystrokes are arriving at all.
+  public var pendingPressCount: Int {
+    lock.withLock { counts.values.reduce(0, +) }
   }
 
   public func stop() {
