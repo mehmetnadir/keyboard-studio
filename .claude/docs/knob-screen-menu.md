@@ -1,6 +1,55 @@
-# The knob's on-screen menu cannot be turned off
+# The knob's on-screen menu
 
-**Verdict: no. Not a "could not find it" — a searched-exhaustively no.**
+**Corrected 2026-08-26. The original conclusion below was wrong in the way
+that mattered.**
+
+The menu cannot be turned *off* — that part holds, and the evidence for it is
+still worth keeping. But it can be **stepped past**, and the way to do it is
+documented by the vendor:
+
+> **Fn + knob press** — switches between screen operation and volume control.
+> — Attack Shark K86 manual
+
+The knob has two firmware modes. In screen mode, turning it walks the settings
+menu; in volume mode, turning it does what its keymap slots say. Confirmed on
+hardware: after Fn + press, turning the knob changes the volume and the menu
+stays away.
+
+## What the original investigation got wrong
+
+It asked "which command disables this menu?", searched exhaustively, found
+nothing, and concluded the behaviour was immovable. Both steps were sound; the
+question was not. The control is not a command at all — it is a key
+combination the firmware handles by itself, so no amount of reading the
+protocol would ever have surfaced it. The manual answered in one line what a
+full opcode sweep could not.
+
+Worth remembering when the next "the protocol has no way to do X" appears: the
+protocol is not the only interface the hardware has.
+
+Two other combinations from the same manual, neither of them in any client:
+
+| Keys | Effect |
+|---|---|
+| Fn + knob press | Screen operation ↔ volume control |
+| Fn + 1 / 2 / 3 | Bluetooth profile 1 / 2 / 3 |
+| Fn + Backspace | Battery percentage on the number row |
+| Fn + Esc, 3 seconds | Factory reset |
+
+## Where the mode is kept
+
+Not in `SET_KBOPTION`: reading it before and after a mode change returns the
+same bytes (`00 02 00 …`). So there is no bit to write, and the mode cannot be
+set from software — Fn + press is the only way in. Assigning `Wheel Swap`
+(firmware action 14) to a knob slot is not needed for this and the slot is
+better spent on something else.
+
+---
+
+*Original findings below. Everything about the command surface still stands;
+only the conclusion drawn from it was wrong.*
+
+**Verdict on a command to disable it: none exists.**
 
 Turning the knob opens the keyboard's own menu on its screen. While that menu
 is up the knob navigates it and the volume bindings do nothing, even though

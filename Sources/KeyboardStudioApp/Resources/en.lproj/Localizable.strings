@@ -227,3 +227,5 @@
 "calibrate.save" = "Save";
 "knob.section.media" = "Media and volume";
 "knob.section.firmware" = "Keyboard functions";
+"knob.mode_note.title" = "Knob opening the keyboard's menu instead?";
+"knob.mode_note.detail" = "The knob has two modes. In screen mode, turning it walks the keyboard's own settings menu and ignores the assignments below. Press Fn together with the knob to switch to volume mode. This is firmware behaviour — no software can change it, and the keyboard remembers the mode.";

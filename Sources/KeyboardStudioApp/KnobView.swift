@@ -9,6 +9,7 @@ struct KnobView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
         header
+        modeNote
         if model.profile?.capabilities.knob == false {
           Text("knob.absent")
             .foregroundStyle(.secondary)
@@ -42,6 +43,29 @@ struct KnobView: View {
       if !model.isConnected { DisconnectedOverlay() }
     }
     .task { model.loadKnob() }
+  }
+
+  /// The single most useful thing to know about this knob, and it is in the
+  /// manual rather than the protocol: turning it may walk the keyboard's own
+  /// settings menu instead of doing what the slots below say. That is a
+  /// firmware mode, and no command changes it — only Fn + press does. Someone
+  /// looking at this page while their knob "does nothing" needs to read this
+  /// before anything else on it makes sense.
+  private var modeNote: some View {
+    HStack(alignment: .top, spacing: 10) {
+      Image(systemName: "info.circle.fill")
+        .foregroundStyle(.tint)
+      VStack(alignment: .leading, spacing: 3) {
+        Text("knob.mode_note.title").font(.callout.weight(.medium))
+        Text("knob.mode_note.detail")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      Spacer()
+    }
+    .padding(12)
+    .background(.tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
   }
 
   private var header: some View {
