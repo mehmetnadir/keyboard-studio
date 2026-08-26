@@ -13,12 +13,17 @@ on:
 
 jobs:
   test:
-    runs-on: macos-14
+    # macos-14 ships Swift 5.10; this package needs the 6.0 toolchain.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Swift version
-        run: swift --version
+      - name: Select Xcode 16
+        run: |
+          ls /Applications | grep -i '^Xcode' || true
+          sudo xcode-select -s /Applications/Xcode_16.app 2>/dev/null \
+            || echo "Xcode_16.app not present; using the default toolchain"
+          swift --version
 
       - name: Build
         run: swift build -v
