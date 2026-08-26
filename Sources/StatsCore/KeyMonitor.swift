@@ -23,7 +23,13 @@ import IOKit.hid
 /// `onPress` is the one exception worth knowing about: it fires per press, in
 /// order, for live UI. It carries a usage id and no timing, the app never sets
 /// it, and it is off unless a caller opts in via `init(enableLiveCallback:)`.
-public final class KeyMonitor {
+/// Safe to hand between threads: every mutable field is guarded by one of the
+/// two locks below, and the HID callbacks arrive on the run loop this object
+/// schedules itself on. Marked `@unchecked` because that guarantee lives in
+/// the locking discipline rather than in the type system — Swift 6.0 rejects
+/// the flush closure without it, while 6.3 infers enough to let it pass, so
+/// saying it explicitly keeps both toolchains building.
+public final class KeyMonitor: @unchecked Sendable {
   /// Emitted for live UI (heatmaps); carries a usage id, never a character.
   public typealias PressHandler = @Sendable (Int) -> Void
 
