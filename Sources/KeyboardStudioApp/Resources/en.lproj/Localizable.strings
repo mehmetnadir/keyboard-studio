@@ -208,3 +208,22 @@
 "screen.gallery.remove" = "Remove";
 "screen.gallery.finder" = "Show in Finder";
 "screen.gallery.reveal" = "Open folder";
+
+/* Screen calibration wizard */
+"settings.screen.calibrate" = "Measure…";
+"calibrate.title" = "Measure the screen";
+"calibrate.subtitle" = "The keyboard accepts any frame size without complaint, so a size that looks right may not be. This finds the real one.";
+"calibrate.asking" = "Asking the keyboard for its resolution…";
+"calibrate.sending" = "Sending the pattern to the keyboard…";
+"calibrate.width.title" = "Width";
+"calibrate.width.detail" = "Coloured bars are now on the keyboard screen, 4 pixels apart. Anything past the panel's edge is cut off — pick the last colour you can still see on the right.";
+"calibrate.height.title" = "Height";
+"calibrate.height.detail" = "Now horizontal bars, 2 pixels apart. Pick the lowest colour you can still see. A white bar marks the top edge.";
+"calibrate.none_visible" = "Seeing no colours at all? Cancel and check the keyboard is connected by cable.";
+"calibrate.done.title" = "Measured";
+"calibrate.done.detail" = "Saving records this as verified, so updates keep it.";
+"calibrate.restart" = "Start over";
+"calibrate.cancel" = "Cancel";
+"calibrate.save" = "Save";
+"knob.section.media" = "Media and volume";
+"knob.section.firmware" = "Keyboard functions";

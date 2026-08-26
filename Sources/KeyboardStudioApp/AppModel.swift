@@ -525,6 +525,52 @@ final class AppModel {
     }
   }
 
+  // MARK: - Calibration
+
+  /// Asks the panel for its own resolution. Nil when the board does not answer,
+  /// which is the common case — most of this family has no output endpoint for
+  /// the query to travel on.
+  func queryPanelSize() async -> (width: Int, height: Int)? {
+    await Task.detached(priority: .userInitiated) {
+      guard let keyboard = try? Keyboard() else { return nil }
+      defer { keyboard.close() }
+      guard let parameters = try? Screen.readParameters(on: keyboard) else { return nil }
+      return (parameters.width, parameters.height)
+    }.value
+  }
+
+  /// Puts a measuring pattern on the panel. `.width` and `.height` need
+  /// separate passes: this encoder is column-major, so a wrong height slides
+  /// columns sideways without tilting a vertical line — stripes can measure
+  /// width but never height.
+  enum Ruler { case width, height }
+
+  func sendRuler(_ ruler: Ruler, width: Int = 235, height: Int = 128) async -> String? {
+    isUploading = true
+    defer { isUploading = false }
+    do {
+      try await Task.detached(priority: .userInitiated) {
+        let keyboard = try Keyboard()
+        defer { keyboard.close() }
+        let frame =
+          ruler == .width
+          ? Screen.widthRuler(height: height)
+          : Screen.heightRuler(width: width)
+        try Screen.writeImage(frame, on: keyboard)
+      }.value
+      return nil
+    } catch {
+      return String(describing: error)
+    }
+  }
+
+  /// Writes a measured size into the fields and saves it as verified.
+  func applyCalibration(width: Int, height: Int) {
+    screenWidthText = String(width)
+    screenHeightText = String(height)
+    saveScreenSize()
+  }
+
   /// Records the size the user confirmed, marking it verified — a human looked
   /// at the panel, which is the only evidence this protocol allows.
   func saveScreenSize() {
@@ -590,9 +636,12 @@ final class AppModel {
   /// way. On failure the previous binding is put back on screen, so the UI
   /// never claims something the keyboard did not accept.
   func setKnob(action: Knob.Action, mediaCode: Int?, fn: Bool = false) {
+    setKnob(action: action, binding: mediaCode.map { Knob.Binding.media(code: $0) } ?? .unassigned, fn: fn)
+  }
+
+  func setKnob(action: Knob.Action, binding: Knob.Binding, fn: Bool = false) {
     guard let slots = knobSlots else { return }
     let previous = (fn ? knobFnBindings[action] : knobBindings[action]) ?? .unassigned
-    let binding = mediaCode.map { Knob.Binding.media(code: $0) } ?? .unassigned
     if fn { knobFnBindings[action] = binding } else { knobBindings[action] = binding }
     knobError = nil
     knobBusy = true

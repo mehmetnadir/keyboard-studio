@@ -103,12 +103,22 @@ private struct KnobActionRow: View {
 
       Picker("", selection: binding) {
         Text("knob.unassigned").tag(-1)
-        ForEach(Knob.mediaOptions, id: \.code) { option in
-          Text(option.name).tag(option.code)
+        Section("knob.section.media") {
+          ForEach(Knob.mediaOptions, id: \.code) { option in
+            Text(option.name).tag(option.code)
+          }
+        }
+        // Firmware actions are things the keyboard does to itself rather than
+        // keystrokes it sends — including the only control anywhere over what
+        // the encoder itself does.
+        Section("knob.section.firmware") {
+          ForEach(Knob.FirmwareAction.allCases, id: \.rawValue) { action in
+            Text(action.label).tag(Self.firmwareTag + Int(action.rawValue))
+          }
         }
       }
       .labelsHidden()
-      .frame(width: 190)
+      .frame(width: 210)
       .disabled(!model.isConnected || model.knobBusy)
 
       if model.knobBusy {
@@ -119,14 +129,33 @@ private struct KnobActionRow: View {
     .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 11))
   }
 
+  /// Media codes are HID usage ids (0…255), so firmware actions are offset out
+  /// of their range rather than sharing it.
+  static let firmwareTag = 1000
+
   private var binding: Binding<Int> {
     Binding(
       get: {
         let current = (fn ? model.knobFnBindings[action] : model.knobBindings[action]) ?? .unassigned
-        if case .media(let code) = current { return code }
-        return -1
+        switch current {
+        case .media(let code): return code
+        case .firmware(let action): return Self.firmwareTag + Int(action.rawValue)
+        default: return -1
+        }
       },
-      set: { model.setKnob(action: action, mediaCode: $0 == -1 ? nil : $0, fn: fn) })
+      set: { tag in
+        let binding: Knob.Binding
+        if tag == -1 {
+          binding = .unassigned
+        } else if tag >= Self.firmwareTag,
+          let action = Knob.FirmwareAction(rawValue: UInt8(tag - Self.firmwareTag))
+        {
+          binding = .firmware(action: action)
+        } else {
+          binding = .media(code: tag)
+        }
+        model.setKnob(action: action, binding: binding, fn: fn)
+      })
   }
 
   private var title: LocalizedStringKey {

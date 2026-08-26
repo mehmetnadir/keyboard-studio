@@ -3,6 +3,7 @@ import StatsCore
 import SwiftUI
 
 struct SettingsView: View {
+  @State private var showCalibration = false
   @Environment(AppModel.self) private var model
   @State private var language = AppLanguage.current
   @State private var languageChanged = false
@@ -144,8 +145,9 @@ struct SettingsView: View {
     }
   }
 
-  /// The panel's resolution cannot be asked for — the firmware reports ready
-  /// for any frame size — so it has to be measured by eye and recorded here.
+  /// The panel's resolution has to be established rather than assumed: the
+  /// firmware reports ready for any frame size, so a size that "looks full"
+  /// proves nothing. The wizard walks it in two clicks.
   @ViewBuilder private var screenSizeEditor: some View {
     @Bindable var model = model
 
@@ -177,6 +179,8 @@ struct SettingsView: View {
         }
       }
       .frame(width: 150)
+      Button("settings.screen.calibrate") { showCalibration = true }
+        .disabled(!model.isConnected || model.isUploading)
       Button("settings.screen.test") {
         Task { await model.testScreenSize() }
       }
@@ -192,6 +196,9 @@ struct SettingsView: View {
     Text("settings.screen.detail")
       .font(.caption)
       .foregroundStyle(.tertiary)
+      .sheet(isPresented: $showCalibration) {
+        CalibrationSheet().environment(model)
+      }
   }
 
   /// Panel sizes seen across this protocol family.

@@ -208,3 +208,22 @@
 "screen.gallery.remove" = "Kaldır";
 "screen.gallery.finder" = "Finder'da göster";
 "screen.gallery.reveal" = "Klasörü aç";
+
+/* Ekran ölçme sihirbazı */
+"settings.screen.calibrate" = "Ölç…";
+"calibrate.title" = "Ekranı ölç";
+"calibrate.subtitle" = "Klavye her boyuttaki kareyi itiraz etmeden kabul eder; doğru görünen bir boyut doğru olmayabilir. Bu, gerçek boyutu bulur.";
+"calibrate.asking" = "Klavyeye çözünürlüğü soruluyor…";
+"calibrate.sending" = "Desen klavyeye gönderiliyor…";
+"calibrate.width.title" = "Genişlik";
+"calibrate.width.detail" = "Klavye ekranında şimdi 4 piksel aralıklı renkli çubuklar var. Panelin kenarını aşan kısım kırpılır — sağda hâlâ görebildiğin son rengi seç.";
+"calibrate.height.title" = "Yükseklik";
+"calibrate.height.detail" = "Şimdi 2 piksel aralıklı yatay çubuklar. En altta hâlâ görebildiğin rengi seç. Beyaz çubuk üst kenarı işaretler.";
+"calibrate.none_visible" = "Hiç renk görmüyor musun? İptal et ve klavyenin kabloyla bağlı olduğunu kontrol et.";
+"calibrate.done.title" = "Ölçüldü";
+"calibrate.done.detail" = "Kaydetmek bunu doğrulanmış olarak işaretler, güncellemelerde korunur.";
+"calibrate.restart" = "Baştan başla";
+"calibrate.cancel" = "İptal";
+"calibrate.save" = "Kaydet";
+"knob.section.media" = "Medya ve ses";
+"knob.section.firmware" = "Klavye işlevleri";
