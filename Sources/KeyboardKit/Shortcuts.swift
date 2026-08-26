@@ -82,6 +82,7 @@ public enum MacShortcuts {
     case window = "Windows & Spaces"
     case text = "Editing"
     case media = "Media"
+    case modifier = "Modifier keys"
     public var id: String { rawValue }
   }
 
@@ -117,6 +118,22 @@ public enum MacShortcuts {
     entry("tab-previous", "Previous tab", .window, 0x2B, [.control, .shift]),
     entry("tab-close", "Close tab", .window, 0x17, [.command]),
     entry("tab-reopen", "Reopen closed tab", .window, 0x17, [.command, .shift]),
+
+    // Modifier keys.
+    //
+    // Assigning a modifier is what makes the macOS Globe key reachable: no
+    // third-party keyboard can send 🌐 itself, but macOS will translate a
+    // modifier into it (Keyboard Settings → Modifier Keys). Right Control is
+    // the usual choice on a Mac — Right Option is often still wanted for
+    // typing accented and non-English characters.
+    entry("right-control", "Right Control", .modifier, 0xE4),
+    entry("right-option", "Right Option", .modifier, 0xE6),
+    entry("right-command", "Right Command", .modifier, 0xE7),
+    entry("right-shift", "Right Shift", .modifier, 0xE5),
+    entry("left-control", "Left Control", .modifier, 0xE0),
+    entry("left-option", "Left Option", .modifier, 0xE2),
+    entry("left-command", "Left Command", .modifier, 0xE3),
+    entry("caps-lock", "Caps Lock", .modifier, 0x39),
 
     // Editing
     entry("copy", "Copy", .text, 0x06, [.command]),

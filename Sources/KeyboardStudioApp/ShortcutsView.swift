@@ -41,15 +41,33 @@ struct ShortcutsView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-          Button("shortcuts.globe.open_settings") {
-            if let url = URL(
-              string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
-            {
-              NSWorkspace.shared.open(url)
+          HStack(spacing: 12) {
+            // Right Control by default: Right Option is often still needed for
+            // typing accented characters, so taking it away by default would
+            // cost more than it gives. Any key works — select one first.
+            Button("shortcuts.globe.assign") {
+              if let entry = MacShortcuts.all.first(where: { $0.id == "right-control" }) {
+                model.assignShortcut(entry.shortcut, toKeyIDs: selection, in: layout)
+              }
             }
+            .disabled(selection.isEmpty || !model.isConnected)
+            .font(.caption)
+
+            Button("shortcuts.globe.open_settings") {
+              if let url = URL(
+                string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
+              {
+                NSWorkspace.shared.open(url)
+              }
+            }
+            .buttonStyle(.link)
+            .font(.caption)
           }
-          .buttonStyle(.link)
-          .font(.caption)
+          if selection.isEmpty {
+            Text("shortcuts.globe.pick_first")
+              .font(.caption2)
+              .foregroundStyle(.tertiary)
+          }
         }
         Spacer()
         Button {

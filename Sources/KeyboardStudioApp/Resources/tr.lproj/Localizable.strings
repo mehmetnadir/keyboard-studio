@@ -232,5 +232,7 @@
 "knob.section.macos" = "macOS eylemleri";
 "knob.section.macos" = "macOS eylemleri";
 "shortcuts.globe.title" = "Klavyenin Fn tuşu, macOS'un 🌐 tuşu değildir";
-"shortcuts.globe.detail" = "Fn hiçbir zaman Mac'e ulaşmaz — klavyenin içinde katman değiştirir, bu yüzden ona bir şey atanamaz. Apple'ın 🌐 tuşu da standart bir kod değildir; hiçbir üçüncü taraf klavye onu gönderemez. Yine de 🌐 elde etmek için: buradan bir tuşa Sağ Option ata, sonra Klavye Ayarları → Klavye Kısayolları → Değiştirici Tuşlar'dan Sağ Option'ı 🌐 Globe yap.";
+"shortcuts.globe.detail" = "Fn hiçbir zaman Mac'e ulaşmaz — klavyenin içinde katman değiştirir, bu yüzden ona bir şey atanamaz. Apple'ın 🌐 tuşu da standart bir kod değildir; hiçbir üçüncü taraf klavye onu gönderemez. Çözüm: buradan bir tuşa değiştirici ata, sonra Klavye Ayarları → Klavye Kısayolları → Değiştirici Tuşlar'dan o değiştiriciyi 🌐 Globe yap. Sağ Ctrl öneriliyor — Sağ Option Türkçe karakterler için gerekebilir.";
 "shortcuts.globe.open_settings" = "Klavye Ayarları'nı aç";
+"shortcuts.globe.assign" = "Seçili tuşa Sağ Ctrl ata";
+"shortcuts.globe.pick_first" = "Önce yukarıdaki klavyeden bir tuş seç.";
