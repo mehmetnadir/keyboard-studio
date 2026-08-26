@@ -154,6 +154,8 @@ private struct KnobActionRow: View {
       Knob.mediaName(code) ?? String(format: "media 0x%02x", code)
     case .key(let usage):
       KeyNamesBridge.name(for: usage)
+    case .firmware(let action):
+      action.label
     case .raw(let bytes):
       bytes.map { String(format: "%02x", $0) }.joined()
     case .unassigned:

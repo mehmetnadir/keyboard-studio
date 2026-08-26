@@ -18,6 +18,9 @@ public enum Knob {
     case media(code: Int)
     /// Ordinary key, by HID usage id from page 0x07.
     case key(usage: Int)
+    /// A firmware action — something the keyboard does to itself rather than
+    /// a keystroke it sends. Slot type 0x0A, with the action in byte 1.
+    case firmware(action: FirmwareAction)
     /// Something this app does not model yet; kept verbatim so writing one
     /// action never silently rewrites another.
     case raw(bytes: [UInt8])
@@ -30,6 +33,8 @@ public enum Knob {
         [0x03, 0x00, UInt8(clamping: code), 0x00]
       case .key(let usage):
         [0x00, 0x00, UInt8(clamping: usage), 0x00]
+      case .firmware(let action):
+        [0x0A, action.rawValue, 0x00, 0x00]
       case .raw(let bytes):
         bytes
       case .unassigned:
@@ -46,7 +51,61 @@ public enum Knob {
       case 0x00 where bytes[2] == 0: self = .unassigned
       case 0x00: self = .key(usage: Int(bytes[2]))
       case 0x03: self = .media(code: Int(bytes[2]))
+      case 0x0A where FirmwareAction(rawValue: bytes[1]) != nil:
+        self = .firmware(action: FirmwareAction(rawValue: bytes[1])!)
       default: self = .raw(bytes: bytes)
+      }
+    }
+  }
+
+  /// Actions the firmware performs on itself, rather than keystrokes it sends.
+  ///
+  /// These are slot type `0x0A` with the action id in byte 1, taken from the
+  /// vendor client's own action table. They matter here because the knob's
+  /// behaviour is firmware state, not a key binding: on this board turning the
+  /// knob opens the keyboard's settings menu no matter what the knob's slots
+  /// say, and no command exists to switch that menu off.
+  ///
+  /// `wheelSwap` is the one lead worth trying. The vendor names it "Wheel
+  /// Swap" on one board and "volume <-> keyboard brightness" on another, which
+  /// says it changes *what the encoder controls* — the only knob-mode control
+  /// found anywhere in either vendor client.
+  public enum FirmwareAction: UInt8, CaseIterable, Sendable {
+    case officeGaming = 6
+    case keyboardLock = 7
+    case checkBattery = 8
+    case ledOnOff = 9
+    case wasdChange = 10
+    case fnKeyMatrixChange = 11
+    case powerSaves = 12
+    case fnLock = 13
+    case wheelSwap = 14
+    case capsSwap = 15
+    case sleepToggle = 16
+    case capsLedSwap = 17
+    case powerDown = 18
+    case fnKeySwap = 19
+    case altTab = 20
+    case languageSwitch = 21
+
+    public var label: String {
+      switch self {
+      case .officeGaming: "Office/Gaming"
+      case .keyboardLock: "Keyboard lock"
+      case .checkBattery: "Check battery"
+      case .ledOnOff: "LED on/off"
+      case .wasdChange: "WASD swap"
+      case .fnKeyMatrixChange: "Fn key matrix"
+      case .powerSaves: "Power saving"
+      case .fnLock: "Fn lock"
+      case .wheelSwap: "Wheel mode swap"
+      case .capsSwap: "Caps swap"
+      case .sleepToggle: "Sleep toggle"
+      case .capsLedSwap: "Caps LED swap"
+      case .powerDown: "Power down"
+      case .fnKeySwap: "Fn key swap"
+      case .altTab: "Alt-Tab"
+      case .languageSwitch: "Language switch"
       }
     }
   }

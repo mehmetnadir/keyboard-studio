@@ -9,6 +9,46 @@ import StatsCore
 /// This command only reads.
 enum KeymapCommand {
   static func run(_ args: [String]) throws {
+    // Writes a firmware action to a knob slot.
+    //
+    // The knob's own bindings are already correct (volume down/up/mute) yet
+    // turning it opens the keyboard's settings menu instead. No command in
+    // either vendor client switches that menu off, but their action tables do
+    // carry one knob-mode control -- "Wheel Swap" (14), named
+    // "volume <-> keyboard brightness" on a sibling board. Assigning it gives
+    // the firmware a way to change what the encoder does, which is the closest
+    // thing to a menu escape that exists.
+    if let raw = option("--knob-firmware", args) {
+      guard let id = UInt8(raw), let action = Knob.FirmwareAction(rawValue: id) else {
+        let known = Knob.FirmwareAction.allCases
+          .map { "\($0.rawValue)=\($0.label)" }.joined(separator: ", ")
+        fail("unknown firmware action: \(raw)\n  known: \(known)")
+      }
+      let onFnLayer = args.contains("--fn")
+      let kb = try Keyboard()
+      defer { kb.close() }
+      guard let map = try Keymap.discoverKnobSlots(on: kb) else {
+        fail("could not find the knob's slots on this keyboard")
+      }
+      let target = option("--action", args) ?? "press"
+      guard let knobAction = Knob.Action(rawValue: target) else {
+        fail("--action expects turnLeft, turnRight or press")
+      }
+      let slot = map.slot(for: knobAction)
+      let bytes = Knob.Binding.firmware(action: action).slotBytes
+
+      if onFnLayer {
+        try Keymap.writeFnSlot(slot, bytes: bytes, on: kb)
+        print("Fn + knob \(target) → \(action.label)")
+        print("Press Fn together with the knob, then turn it and see whether the")
+        print("settings menu still appears.")
+      } else {
+        let ok = try Keymap.writeSlotVerified(slot, bytes: bytes, on: kb)
+        print("knob \(target) → \(action.label)\(ok ? "" : " (write not confirmed)")")
+      }
+      return
+    }
+
     if args.contains("--fn-test") {
       // Try assigning Fn + knob-press to Next Track, then verify with a fresh
       // connection. The Fn layer's knob slots read as empty, so a wrong guess
@@ -113,6 +153,7 @@ enum KeymapCommand {
           described = Knob.mediaName(code).map { "\($0) (0x\(String(code, radix: 16)))" }
             ?? "media 0x\(String(code, radix: 16))"
         case .key(let usage): described = "key \(KeyNames.name(for: usage))"
+        case .firmware(let action): described = "firmware: \(action.label)"
         case .raw(let bytes): described = bytes.map { String(format: "%02x", $0) }.joined()
         case .unassigned: described = "unassigned"
         }
