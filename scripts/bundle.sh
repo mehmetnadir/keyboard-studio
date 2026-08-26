@@ -71,17 +71,19 @@ for nested in "$APP/Contents/MacOS"/*.bundle; do
   [ -e "$nested" ] && codesign --force --sign "$IDENTITY" "$nested"
 done
 
-# Hardened runtime only applies to a real signing identity: pairing it with an
-# ad-hoc signature is rejected, which is what happens on a machine (or a CI
-# runner) with no certificate installed.
-RUNTIME_FLAG=(--options runtime)
+# Hardened runtime applies only to a real signing identity; codesign rejects
+# it alongside an ad-hoc signature. Written as two plain calls rather than an
+# array of flags, because an empty array counts as unbound under `set -u` in
+# the bash 3.2 that ships with macOS.
 if [ "$IDENTITY" = "-" ]; then
-  RUNTIME_FLAG=()
+  codesign --force \
+    --entitlements "$ROOT/Resources/KeyboardStudio.entitlements" \
+    --sign - "$APP"
+else
+  codesign --force --options runtime \
+    --entitlements "$ROOT/Resources/KeyboardStudio.entitlements" \
+    --sign "$IDENTITY" "$APP"
 fi
-
-codesign --force "${RUNTIME_FLAG[@]}" \
-  --entitlements "$ROOT/Resources/KeyboardStudio.entitlements" \
-  --sign "$IDENTITY" "$APP"
 
 codesign --verify --strict "$APP" && echo "Signature verified" 
 
