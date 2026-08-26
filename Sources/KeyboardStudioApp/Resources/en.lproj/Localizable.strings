@@ -231,3 +231,6 @@
 "knob.mode_note.detail" = "The knob has two modes. In screen mode, turning it walks the keyboard's own settings menu and ignores the assignments below. Press Fn together with the knob to switch to volume mode. This is firmware behaviour — no software can change it, and the keyboard remembers the mode.";
 "knob.section.macos" = "macOS actions";
 "knob.section.macos" = "macOS actions";
+"shortcuts.globe.title" = "The keyboard's Fn is not the macOS 🌐 key";
+"shortcuts.globe.detail" = "Fn never reaches the Mac — it switches layers inside the keyboard, so nothing can be assigned to it. And Apple's 🌐 key is not a standard code, so no third-party keyboard can send it. To get 🌐 anyway: assign a key here to Right Option, then in Keyboard Settings → Keyboard Shortcuts → Modifier Keys set Right Option to 🌐 Globe.";
+"shortcuts.globe.open_settings" = "Open Keyboard Settings";

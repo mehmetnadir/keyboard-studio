@@ -12,11 +12,62 @@ struct ShortcutsView: View {
   @State private var category: MacShortcuts.Category = .system
   @State private var customUsage = ""
   @State private var customModifiers: Shortcut.Modifiers = [.command]
+  @AppStorage("hideGlobeNote") private var hideGlobeNote = false
 
   private var layout: KeyboardLayout { model.layout ?? .placeholder }
 
+  /// Why the keyboard's Fn is not macOS's Globe key, and what to do about it.
+  ///
+  /// Two separate facts, and people usually only know the second:
+  ///
+  ///  * The keyboard's Fn never reaches the Mac. It switches layers inside the
+  ///    firmware, so no code goes out over USB — nothing can be assigned to it
+  ///    here, and macOS cannot see it at all.
+  ///  * Apple's Globe key is not a standard HID code. It belongs to Apple's own
+  ///    device protocol, so no third-party keyboard can send it. This is not a
+  ///    limitation of this board.
+  ///
+  /// The way through is to send an ordinary modifier and let macOS translate
+  /// it: assign a key here to Right Option, then set Right Option to Globe in
+  /// Keyboard Settings → Modifier Keys.
+  @ViewBuilder private var globeNote: some View {
+    if !hideGlobeNote {
+      HStack(alignment: .top, spacing: 10) {
+        Image(systemName: "globe")
+          .foregroundStyle(.tint)
+        VStack(alignment: .leading, spacing: 4) {
+          Text("shortcuts.globe.title").font(.callout.weight(.medium))
+          Text("shortcuts.globe.detail")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+          Button("shortcuts.globe.open_settings") {
+            if let url = URL(
+              string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
+            {
+              NSWorkspace.shared.open(url)
+            }
+          }
+          .buttonStyle(.link)
+          .font(.caption)
+        }
+        Spacer()
+        Button {
+          hideGlobeNote = true
+        } label: {
+          Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+        }
+        .buttonStyle(.plain)
+      }
+      .padding(12)
+      .background(.tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
+      .padding([.horizontal, .top], 12)
+    }
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
+      globeNote
       ScrollView([.horizontal, .vertical]) {
         KeyboardCanvas(
           layout: layout,

@@ -231,3 +231,6 @@
 "knob.mode_note.detail" = "Düğmenin iki modu var. Ekran modunda çevirmek klavyenin kendi ayar menüsünde gezinir ve aşağıdaki atamaları yok sayar. Ses moduna geçmek için Fn ile birlikte düğmeye bas. Bu firmware davranışıdır — hiçbir yazılım değiştiremez, klavye modu hatırlar.";
 "knob.section.macos" = "macOS eylemleri";
 "knob.section.macos" = "macOS eylemleri";
+"shortcuts.globe.title" = "Klavyenin Fn tuşu, macOS'un 🌐 tuşu değildir";
+"shortcuts.globe.detail" = "Fn hiçbir zaman Mac'e ulaşmaz — klavyenin içinde katman değiştirir, bu yüzden ona bir şey atanamaz. Apple'ın 🌐 tuşu da standart bir kod değildir; hiçbir üçüncü taraf klavye onu gönderemez. Yine de 🌐 elde etmek için: buradan bir tuşa Sağ Option ata, sonra Klavye Ayarları → Klavye Kısayolları → Değiştirici Tuşlar'dan Sağ Option'ı 🌐 Globe yap.";
+"shortcuts.globe.open_settings" = "Klavye Ayarları'nı aç";
