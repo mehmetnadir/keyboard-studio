@@ -49,7 +49,8 @@ func usage() -> Never {
       kstudio side <hex|name> [opts]        side strip color
       kstudio screen <image|gif>            upload an image or GIF to the screen
       kstudio screen --test                 upload RGBW test pattern
-      kstudio screen --orient [--size WxH]  find the panel's real size and rotation
+      kstudio screen --query                ask the panel its own resolution
+      kstudio screen --orient [--size WxH]  check size and rotation by eye
       kstudio screen --stats                show today's typing stats on the keyboard
       kstudio effects                       list effect names
       kstudio probe                         ask the device about itself (read-only)
@@ -156,7 +157,25 @@ do {
     guard args.count > 1 else { usage() }
     let kb = try Keyboard()
     defer { kb.close() }
-    if args[1] == "--test" {
+    if args[1] == "--query" {
+      if args.contains("--verbose") {
+        let packet = Proto.displayPacket(Proto.opGetDisplayParam)
+        print("sending on report \(Proto.displayReportID): " +
+              packet.prefix(4).map { String(format: "%02x", $0) }.joined(separator: " ") +
+              " … " + String(format: "%02x", packet[packet.count - 1]))
+        do {
+          let reply = try kb.queryDisplay(packet)
+          print("reply: " + reply.prefix(24).map { String(format: "%02x", $0) }.joined(separator: " "))
+        } catch {
+          print("failed: \(error)")
+        }
+      }
+      if let p = try Screen.readParameters(on: kb) {
+        print("Panel reports: \(p.width)×\(p.height), brightness \(p.brightness)")
+      } else {
+        print("The panel did not report its size (no answer to GetDisplayParam).")
+      }
+    } else if args[1] == "--test" {
       try Screen.writeImage(Screen.testPattern(), on: kb)
       print("Test pattern uploaded.")
     } else if args[1] == "--ruler" || args[1] == "--bands" || args[1] == "--orient" {

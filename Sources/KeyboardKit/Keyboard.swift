@@ -95,6 +95,20 @@ public final class Keyboard {
 
   /// Sends a bare read-only opcode and returns the raw reply. For exploring
   /// what a given firmware reports; callers interpret the bytes themselves.
+  /// Sends a command to the display family and reads its reply.
+  ///
+  /// The screen answers on its own numbered report id rather than the
+  /// unnumbered feature report everything else uses, so it needs its own path
+  /// through the transport.
+  public func queryDisplay(_ payload: [UInt8], reportID: Int = Proto.displayReportID) throws
+    -> [UInt8]
+  {
+    try transport.send(reportType: kIOHIDReportTypeOutput, reportID: reportID, payload)
+    Thread.sleep(forTimeInterval: 0.05)
+    return try transport.read(
+      reportType: kIOHIDReportTypeInput, reportID: reportID, length: payload.count)
+  }
+
   public func probe(opcode: UInt8) throws -> [UInt8] {
     try query([opcode])
   }

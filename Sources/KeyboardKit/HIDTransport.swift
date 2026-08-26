@@ -125,6 +125,30 @@ final class HIDTransport {
     return Array(data.prefix(max(0, min(Int(length), Proto.reportLen))))
   }
 
+  /// Sends on a numbered report id.
+  ///
+  /// The screen is a second command family: the vendor's client talks to the
+  /// keyboard on report id 8 and to the display on report id 13, while every
+  /// command this project sends goes out as an unnumbered feature report.
+  /// Queries like "what resolution are you?" only answer on the numbered path.
+  func send(reportType: IOHIDReportType, reportID: Int, _ payload: [UInt8]) throws {
+    let result = payload.withUnsafeBufferPointer { buffer -> IOReturn in
+      guard let base = buffer.baseAddress, !buffer.isEmpty else { return kIOReturnBadArgument }
+      return IOHIDDeviceSetReport(device, reportType, CFIndex(reportID), base, buffer.count)
+    }
+    guard result == kIOReturnSuccess else { throw DeviceError.reportFailed(result) }
+  }
+
+  func read(reportType: IOHIDReportType, reportID: Int, length: Int) throws -> [UInt8] {
+    var data = [UInt8](repeating: 0, count: length)
+    var size = CFIndex(length)
+    let result = data.withUnsafeMutableBufferPointer { buffer in
+      IOHIDDeviceGetReport(device, reportType, CFIndex(reportID), buffer.baseAddress!, &size)
+    }
+    guard result == kIOReturnSuccess else { throw DeviceError.reportFailed(result) }
+    return Array(data.prefix(max(0, min(Int(size), length))))
+  }
+
   func close() {
     guard isOpen else { return }
     isOpen = false

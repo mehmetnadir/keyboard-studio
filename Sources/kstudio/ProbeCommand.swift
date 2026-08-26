@@ -19,15 +19,19 @@ enum ProbeCommand {
         continue
       }
       let echoed = response.first == opcode
-      let bytes = response.prefix(12).map { String(format: "%02x", $0) }.joined(separator: " ")
+      let bytes = response.prefix(22).map { String(format: "%02x", $0) }.joined(separator: " ")
       print(String(format: "  0x%02X  %@  %@", opcode, echoed ? "✓" : " ", bytes))
     }
 
     print("\nScreen geometry — which frame sizes does the panel accept?")
     print(String(repeating: "─", count: 62))
-    for side in [64, 96, 128, 160, 192, 240, 256] {
-      let accepted = kb.probeScreenGeometry(width: side, height: side)
-      print("  \(side)×\(side)  \(accepted ? "accepted" : "rejected")")
+    // Includes deliberately impossible sizes: if even 2048x2048 is accepted
+    // the handshake performs no bounds check at all, and cannot be used to
+    // discover the real panel size.
+    for (w, h) in [(64, 64), (128, 128), (235, 128), (240, 135), (240, 240),
+                   (320, 240), (512, 512), (1024, 1024), (2048, 2048)] {
+      let accepted = kb.probeScreenGeometry(width: w, height: h)
+      print("  \(w)×\(h)  \(accepted ? "accepted" : "rejected")")
     }
     print(
       """

@@ -33,6 +33,9 @@ public enum DangerousCommands {
 
   /// Read-only opcodes confirmed safe to probe on this protocol family.
   public static let safeToProbe: [UInt8] = [
+    // 0x0E asks the panel for its own resolution and 0x36 for the image slot
+    // addresses; both are reads in the vendor's own client.
+    0x0E, 0x36,
     0x80, 0x81, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
     0x8B, 0x8C, 0x8F, 0x90, 0x92, 0x97, 0xAD, 0xAE, 0xF0,
   ]

@@ -94,6 +94,49 @@ public enum Screen {
     try sendChunks(kb, bytes, frameIndex: layer, allFrames: 1, delay: 0)
   }
 
+  /// What the panel reports about itself.
+  public struct Parameters: Sendable, Equatable {
+    public var width: Int
+    public var height: Int
+    public var brightness: Int
+  }
+
+  /// Asks the panel for its own resolution instead of guessing it.
+  ///
+  /// The vendor's client never hardcodes a screen size either — it starts with
+  /// `horizontal: 0, vertical: 0` and fills them in from this reply, which is
+  /// why the same client drives boards with different panels. Layout of the
+  /// response, from the vendor's own parser:
+  ///
+  ///     byte 2      brightness
+  ///     bytes 17-18 width   (big-endian)
+  ///     bytes 19-20 height  (big-endian)
+  ///
+  /// Reads on this protocol are cached — the first query after another command
+  /// returns *that* command's reply — so this retries until the opcode echoes
+  /// back, the same fix `deviceID()` needs.
+  public static func readParameters(on kb: Keyboard) throws -> Parameters? {
+    // Two transports, because the answer depends on how the board is wired.
+    // The vendor's client sends this on its own numbered output report; boards
+    // whose vendor interface exposes no output endpoint can only be asked over
+    // the unnumbered feature report the rest of this project uses.
+    let packet = Proto.displayPacket(Proto.opGetDisplayParam)
+    for attempt in 0..<6 {
+      let reply: [UInt8]? =
+        (try? kb.queryDisplay(packet)) ?? (try? kb.probe(opcode: Proto.opGetDisplayParam))
+      if let r = reply, r.count > 20, r[0] == Proto.opGetDisplayParam {
+        let width = Int(r[17]) << 8 | Int(r[18])
+        let height = Int(r[19]) << 8 | Int(r[20])
+        // A panel this size does not exist; a zero means "not reported".
+        if (8...1024).contains(width), (8...1024).contains(height) {
+          return Parameters(width: width, height: height, brightness: Int(r[2]))
+        }
+      }
+      if attempt < 5 { Thread.sleep(forTimeInterval: 0.1) }
+    }
+    return nil
+  }
+
   /// Corner-coded orientation test.
   ///
   /// A panel accepts any frame size without complaint, so a picture that
@@ -168,14 +211,19 @@ public enum Screen {
     }
     for frame in frames { try validate(frame) }
     let first = frames[0]
-    let firstBytes = encode565(first.rgb)
+    // The frame's own size, not the default: passing no size here encoded every
+    // animation frame as 128x128 regardless of the panel, which produced a
+    // half-filled, striped image on any non-square screen. Static images always
+    // passed their size, so only GIFs were affected.
+    let firstBytes = encode565(first.rgb, width: first.width, height: first.height)
     guard try canWrite(
       kb, byteLength: firstBytes.count, frameIndex: 0,
       allFrames: UInt8(frames.count), delay: first.delayByte, layer: 0)
     else { throw DeviceError.screenHandshakeFailed }
     for (index, frame) in frames.enumerated() {
       try sendChunks(
-        kb, encode565(frame.rgb), frameIndex: UInt8(index),
+        kb, encode565(frame.rgb, width: frame.width, height: frame.height),
+        frameIndex: UInt8(index),
         allFrames: UInt8(frames.count), delay: frame.delayByte)
     }
   }
@@ -264,19 +312,49 @@ public enum Screen {
     }
   }
 
-  /// Row-major RGB → column-major RGB565 big-endian (panel's native order).
+  /// How pixels are ordered on the wire.
+  ///
+  /// Two conventions exist and they are indistinguishable on a square panel —
+  /// which is exactly why this went unnoticed: the encoder was verified at
+  /// 128×128, where the two differ only by a transpose that a symmetric test
+  /// pattern hides. On a 235×128 panel they produce completely different
+  /// images.
+  public enum PixelOrder: String, Sendable, CaseIterable {
+    /// Column-major, big-endian. What this project shipped with.
+    case column
+    /// Row-major, little-endian — what the vendor's own client emits:
+    /// `for row { for column { push(low); push(high) } }`.
+    case row
+  }
+
+  /// Row-major RGB → RGB565 in the panel's wire order.
   static func encode565(
-    _ rgb: [UInt8], width: Int = Screen.width, height: Int = Screen.height
+    _ rgb: [UInt8], width: Int = Screen.width, height: Int = Screen.height,
+    order: PixelOrder = .column
   ) -> [UInt8] {
     var out = [UInt8]()
     out.reserveCapacity(width * height * 2)
-    for x in 0..<width {
+
+    func pack(_ i: Int) -> UInt16 {
+      (UInt16(rgb[i] >> 3) << 11) | (UInt16(rgb[i + 1] >> 2) << 5) | UInt16(rgb[i + 2] >> 3)
+    }
+
+    switch order {
+    case .column:
+      for x in 0..<width {
+        for y in 0..<height {
+          let value = pack((y * width + x) * 3)
+          out.append(UInt8(value >> 8))
+          out.append(UInt8(value & 0xFF))
+        }
+      }
+    case .row:
       for y in 0..<height {
-        let i = (y * width + x) * 3
-        let value =
-          (UInt16(rgb[i] >> 3) << 11) | (UInt16(rgb[i + 1] >> 2) << 5) | UInt16(rgb[i + 2] >> 3)
-        out.append(UInt8(value >> 8))
-        out.append(UInt8(value & 0xFF))
+        for x in 0..<width {
+          let value = pack((y * width + x) * 3)
+          out.append(UInt8(value & 0xFF))
+          out.append(UInt8(value >> 8))
+        }
       }
     }
     return out

@@ -14,6 +14,25 @@ public enum Proto {
   static let pid = 0x4015
   static let vendorUsagePage = 0xFFFF
   static let vendorUsage = 0x0002
+  /// Asks the screen for its resolution and brightness. Named GetDisplayParam
+  /// in the vendor client.
+  public static let opGetDisplayParam: UInt8 = 0x0E
+
+  /// The screen is a second command family on its own report id: the vendor's
+  /// client uses 8 for the keyboard and 13 for the display.
+  public static let displayReportID = 13
+  public static let displayPacketLen = 41
+
+  /// Display packets carry a fixed sub-command byte and a checksum that makes
+  /// the whole report — report id included — sum to 85.
+  public static func displayPacket(_ opcode: UInt8, subCommand: UInt8 = 39) -> [UInt8] {
+    var packet = [UInt8](repeating: 0, count: displayPacketLen)
+    packet[0] = opcode
+    packet[1] = subCommand
+    let sum = packet[0..<(displayPacketLen - 1)].reduce(0) { $0 + Int($1) }
+    packet[displayPacketLen - 1] = UInt8(bitPattern: Int8(truncatingIfNeeded: 85 - sum - displayReportID))
+    return packet
+  }
   public static let reportLen = 64
 
   static let opGetRev: UInt8 = 0x80
