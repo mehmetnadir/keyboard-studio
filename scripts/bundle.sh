@@ -49,9 +49,13 @@ done
 # A real certificate keeps the identity stable across rebuilds, so the grant
 # survives. It is also what allows the App Sandbox to work at all: macOS will
 # not create a container for an ad-hoc signed app.
+# `|| true` is load-bearing: with no certificate installed grep exits 1, that
+# becomes the assignment's exit status, and `set -e` kills the script here --
+# silently, since nothing wrote to stderr. Having no Developer ID is a normal
+# condition (every CI runner, every fresh clone), not a failure.
 IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
   | grep -m1 'Developer ID Application' \
-  | sed -E 's/.*"(.*)".*/\1/')"
+  | sed -E 's/.*"(.*)".*/\1/' || true)"
 if [ -z "$IDENTITY" ]; then
   IDENTITY="-"
   echo "No Developer ID found — signing ad-hoc. macOS will ask for permissions"

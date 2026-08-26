@@ -43,6 +43,4 @@ jobs:
           echo "No networking found, as promised."
 
       - name: Build the app bundle
-        # -x so a failure names the line that failed: the step was exiting with
-        # only a status code and no message, which is not something to guess at.
-        run: bash -x ./scripts/bundle.sh release
+        run: ./scripts/bundle.sh release
