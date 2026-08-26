@@ -11,6 +11,7 @@ struct ScreenView: View {
   @State private var status: String?
   @State private var isTargeted = false
   @State private var mode: ScreenFit = .fill
+  @State private var gallery: [GalleryItem] = []
 
   var body: some View {
     @Bindable var model = model
@@ -78,6 +79,9 @@ struct ScreenView: View {
       // The size has to come from the profile, not a literal — this panel is
       // not 128×128, and a hardcoded number here quietly contradicts the
       // Settings tab where the user just corrected it.
+      Divider()
+      gallerySection
+
       Text("\(model.screenWidthText)×\(model.screenHeightText) · " + "screen.panel_info".localized)
         .font(.caption)
         .foregroundStyle(.tertiary)
@@ -172,6 +176,96 @@ struct ScreenView: View {
       } isTargeted: { isTargeted = $0 }
   }
 
+  private var gallerySection: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack {
+        Text("screen.gallery").font(.headline)
+        Spacer()
+        if !gallery.isEmpty {
+          Button("screen.gallery.reveal") {
+            NSWorkspace.shared.selectFile(
+              gallery.first?.url.path, inFileViewerRootedAtPath: (try? ScreenGallery.directory())?.path ?? "")
+          }
+          .buttonStyle(.link)
+          .font(.caption)
+        }
+      }
+
+      if gallery.isEmpty {
+        Text("screen.gallery.empty")
+          .font(.caption)
+          .foregroundStyle(.tertiary)
+      } else {
+        ScrollView(.vertical) {
+          LazyVGrid(columns: [GridItem(.adaptive(minimum: 108), spacing: 10)], spacing: 10) {
+            ForEach(gallery) { item in
+              galleryTile(item)
+            }
+          }
+          .padding(.vertical, 2)
+        }
+        .frame(maxHeight: 240)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .task { gallery = ScreenGallery.items() }
+  }
+
+  private func galleryTile(_ item: GalleryItem) -> some View {
+    let width = Int(model.screenWidthText) ?? 235
+    let height = Int(model.screenHeightText) ?? 128
+    // Tiles are drawn at the panel's shape, so the grid previews what the
+    // keyboard will show rather than what the file looks like.
+    let tileWidth: CGFloat = 104
+    let tileHeight = tileWidth * CGFloat(height) / CGFloat(max(width, 1))
+
+    return VStack(spacing: 4) {
+      ZStack {
+        if let image = ScreenGallery.thumbnail(for: item, width: width, height: height) {
+          Image(nsImage: image)
+            .resizable()
+            .interpolation(.medium)
+            .aspectRatio(contentMode: .fill)
+        } else {
+          Color.black
+        }
+        if item.isAnimated {
+          Text("GIF")
+            .font(.system(size: 9, weight: .bold))
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 3))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .padding(3)
+        }
+      }
+      .frame(width: tileWidth, height: tileHeight)
+      .clipShape(RoundedRectangle(cornerRadius: 5))
+      .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(.white.opacity(0.08)))
+
+      Text(item.title)
+        .font(.caption2)
+        .lineLimit(1)
+        .truncationMode(.middle)
+        .foregroundStyle(.secondary)
+        .frame(width: tileWidth)
+    }
+    .onTapGesture { Task { await upload(item.url, remember: false) } }
+    .contextMenu {
+      Button("screen.gallery.send") { Task { await upload(item.url, remember: false) } }
+      Button("screen.gallery.finder") {
+        NSWorkspace.shared.activateFileViewerSelecting([item.url])
+      }
+      Divider()
+      Button("screen.gallery.remove", role: .destructive) {
+        try? ScreenGallery.remove(item)
+        gallery = ScreenGallery.items()
+      }
+    }
+    .help(item.title)
+  }
+
   private func chooseFile() {
     let panel = NSOpenPanel()
     panel.allowedContentTypes = [.png, .jpeg, .gif, .image]
@@ -181,10 +275,21 @@ struct ScreenView: View {
     }
   }
 
-  private func upload(_ url: URL) async {
+  /// `remember` is false when sending something already in the gallery — the
+  /// point of the copy is to keep what came from outside, not to duplicate what
+  /// is already kept.
+  private func upload(_ url: URL, remember: Bool = true) async {
     preview = NSImage(contentsOf: url)
-    status = "Uploading…"
+    status = "screen.uploading".localized
     await model.uploadScreen(url: url, mode: mode)
     status = model.deviceError ?? "screen.uploaded".localized
+
+    if remember, model.deviceError == nil {
+      // Failure to keep a copy must not read as a failed upload: the picture is
+      // already on the keyboard by this point.
+      if (try? ScreenGallery.add(url)) != nil {
+        gallery = ScreenGallery.items()
+      }
+    }
   }
 }

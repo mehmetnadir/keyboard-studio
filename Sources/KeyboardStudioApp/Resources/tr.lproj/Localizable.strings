@@ -200,3 +200,11 @@
 "knob.fn_turn_left" = "Fn + sola çevir";
 "knob.fn_turn_right" = "Fn + sağa çevir";
 "knob.fn_press" = "Fn + bas";
+
+/* Ekran galerisi */
+"screen.gallery" = "Galeri";
+"screen.gallery.empty" = "Gönderdiğin görseller ve GIF'ler burada birikir; dosyayı yeniden aramadan tekrar gönderebilirsin.";
+"screen.gallery.send" = "Klavyeye gönder";
+"screen.gallery.remove" = "Kaldır";
+"screen.gallery.finder" = "Finder'da göster";
+"screen.gallery.reveal" = "Klasörü aç";

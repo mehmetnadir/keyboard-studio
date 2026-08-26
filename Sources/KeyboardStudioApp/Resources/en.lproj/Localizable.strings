@@ -200,3 +200,11 @@
 "knob.fn_turn_left" = "Fn + turn left";
 "knob.fn_turn_right" = "Fn + turn right";
 "knob.fn_press" = "Fn + press";
+
+/* Screen gallery */
+"screen.gallery" = "Gallery";
+"screen.gallery.empty" = "Images and GIFs you send collect here, so you can send them again without hunting for the file.";
+"screen.gallery.send" = "Send to keyboard";
+"screen.gallery.remove" = "Remove";
+"screen.gallery.finder" = "Show in Finder";
+"screen.gallery.reveal" = "Open folder";
