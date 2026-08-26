@@ -4,6 +4,11 @@ import SwiftUI
 ///
 /// An app that also has a MenuBarExtra can finish launching with no window
 /// showing, which looks exactly like the app opening and immediately quitting.
+/// AppKit calls every delegate method on the main thread, and `NSApp` is
+/// main-actor isolated. Swift 6.3 infers that here; 6.0 does not, so the
+/// isolation is stated rather than left to the compiler's judgement — the
+/// behaviour is identical, and both toolchains build.
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
   func applicationDidFinishLaunching(_ notification: Notification) {
     presentMainWindow()
