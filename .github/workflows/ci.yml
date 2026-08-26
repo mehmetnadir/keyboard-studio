@@ -1,0 +1,41 @@
+name: CI
+
+# Runs on every push and pull request so a contribution cannot land broken
+# code. Publishing stays off CI on purpose: releases are built and signed on a
+# maintainer's machine with a real Developer ID, because macOS ties permissions
+# to the code identity. A CI build signed with a different identity (or ad-hoc)
+# would arrive as a different app, revoking Input Monitoring and silently
+# stopping typing statistics for everyone who updates.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build -v
+
+      - name: Test
+        run: swift test
+
+      # The privacy promise in PRIVACY.md is checkable, so check it. A pull
+      # request that adds networking to the app fails here rather than being
+      # noticed later — or not at all.
+      - name: No networking in the app
+        run: |
+          if grep -rn 'URLSession\|NWConnection\|CFSocket\|Network\.framework' Sources/; then
+            echo "::error::Sources contain networking. PRIVACY.md promises the app never reaches the network."
+            exit 1
+          fi
+          echo "No networking found, as promised."
+
+      - name: Build the app bundle
+        run: ./scripts/bundle.sh release

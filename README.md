@@ -57,10 +57,25 @@ currently bound to.
 ```sh
 git clone https://github.com/mehmetnadir/keyboard-studio.git
 cd keyboard-studio
-swift build -c release
-./scripts/bundle.sh release        # builds Keyboard Studio.app
-open "build/Keyboard Studio.app"
+./scripts/install.sh               # builds, signs, installs to /Applications
 ```
+
+To update later:
+
+```sh
+./scripts/update.sh                # pulls, tests, reinstalls
+```
+
+The app has no updater inside it, and that is deliberate: it contains no
+networking code at all, which is a promise [PRIVACY.md](PRIVACY.md) makes and
+invites you to verify. `update.sh` keeps it that way — git does the fetching,
+outside the app — and it will not install a build whose tests fail.
+
+**Signing matters for updates.** macOS ties permissions to a code identity, so
+a build signed with a different identity arrives as a different app: Input
+Monitoring is revoked and typing statistics stop without saying so.
+`bundle.sh` uses a Developer ID certificate when the machine has one and warns
+when it falls back to ad-hoc.
 
 Requires macOS 14 or later and an Xcode 16+ toolchain. There are no third-party
 dependencies — everything is IOKit, SwiftUI, ImageIO and SQLite from the system.
