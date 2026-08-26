@@ -178,6 +178,39 @@ public enum Screen {
     return ScreenFrame(rgb: rgb, width: width, height: height)
   }
 
+  /// The height twin of `widthRuler`.
+  ///
+  /// Needed separately because vertical stripes cannot measure height: this
+  /// project encodes column-major, so a wrong height slides columns without
+  /// tilting a vertical line. Horizontal bars are what a height error shows up
+  /// in, and the bottom-most visible colour names the last row the panel has.
+  public static let heightMarks: [(y: Int, name: String, color: (UInt8, UInt8, UInt8))] = [
+    (126, "red", (230, 40, 40)),
+    (128, "orange", (245, 140, 30)),
+    (130, "yellow", (240, 225, 50)),
+    (132, "green", (60, 200, 70)),
+    (134, "cyan", (40, 210, 210)),
+    (136, "blue", (60, 110, 245)),
+    (138, "purple", (160, 70, 220)),
+    (140, "white", (255, 255, 255)),
+  ]
+
+  public static func heightRuler(width: Int) -> ScreenFrame {
+    let height = 148  // taller than every candidate; the panel clips the rest
+    var rgb = [UInt8](repeating: 0, count: width * height * 3)
+    func fill(_ y0: Int, _ y1: Int, _ color: (UInt8, UInt8, UInt8)) {
+      for y in max(0, y0)..<min(height, y1) {
+        for x in 0..<width {
+          let i = (y * width + x) * 3
+          rgb[i] = color.0; rgb[i + 1] = color.1; rgb[i + 2] = color.2
+        }
+      }
+    }
+    fill(0, 6, (255, 255, 255))  // top anchor, so top/bottom cannot be confused
+    for mark in heightMarks { fill(mark.y, mark.y + 2, mark.color) }
+    return ScreenFrame(rgb: rgb, width: width, height: height)
+  }
+
   /// One step of a width sweep: a solid colour, white vertical stripes and a
   /// full border.
   ///

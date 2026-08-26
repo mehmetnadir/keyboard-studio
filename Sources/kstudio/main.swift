@@ -52,6 +52,7 @@ func usage() -> Never {
       kstudio screen --query                ask the panel its own resolution
       kstudio screen --sweep                try candidate sizes, one colour each
       kstudio screen --ruler-width          read the width from one colour ruler
+      kstudio screen --ruler-height         read the height the same way
       kstudio screen --orient [--size WxH]  check size and rotation by eye
       kstudio screen --stats                show today's typing stats on the keyboard
       kstudio effects                       list effect names
@@ -159,7 +160,14 @@ do {
     guard args.count > 1 else { usage() }
     let kb = try Keyboard()
     defer { kb.close() }
-    if args[1] == "--ruler-width" {
+    if args[1] == "--ruler-height" {
+      let width = intOption("--width", args, default: 235, range: 32...512)
+      try Screen.writeImage(Screen.heightRuler(width: width), on: kb)
+      print("Height ruler uploaded. Bars from top to bottom, 2 px apart:")
+      for mark in Screen.heightMarks { print("  \(mark.name) → y = \(mark.y)") }
+      print("\nThe lowest colour you can still see gives the panel height.")
+      print("A white bar marks the top edge.")
+    } else if args[1] == "--ruler-width" {
       let height = intOption("--height", args, default: 128, range: 32...400)
       try Screen.writeImage(Screen.widthRuler(height: height), on: kb)
       print("Colour ruler uploaded. Marks, left to right, 4 px apart:")

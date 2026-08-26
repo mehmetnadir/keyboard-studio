@@ -97,3 +97,67 @@ Open a pull request with the profile (and layout) plus one line in the PR
 describing what you verified on hardware: lighting, screen, measured
 resolution. Please do not mark `verified: true` for anything you have not seen
 with your own eyes — other people will trust that flag.
+
+## Finding the screen size
+
+A panel accepts any frame size without complaining, so "it looks full" is not
+evidence. Work through these in order; stop at the first one that answers.
+
+**1. Ask the device.**
+
+```sh
+kstudio screen --query
+```
+
+Some boards report their own resolution and need nothing else. The vendor's own
+client does not hardcode a size either — it starts at zero and fills in the
+reply to `GetDisplayParam`. If your board answers, put those numbers in the
+profile and you are done.
+
+**2. Check width and rotation by eye.**
+
+```sh
+kstudio screen --orient --size 240x135
+```
+
+Vertical stripes plus four differently coloured corners. Stripes lean when the
+width is wrong, corners land in the wrong places when the frame is rotated or
+transposed, and a missing edge means the device is cropping.
+
+**3. Sweep candidates.**
+
+```sh
+kstudio screen --sweep
+```
+
+Shows each candidate size as a differently tinted frame of vertical stripes.
+Straight stripes mean that width is right; the colour tells you which candidate
+you are looking at. Edit `Screen.candidateSizes` to change the list.
+
+**4. Read the size off a ruler.**
+
+```sh
+kstudio screen --ruler-width
+kstudio screen --ruler-height
+```
+
+Each sends a frame deliberately larger than the panel, marked with coloured
+bars at known positions. The device clips what does not fit, so the last colour
+still visible names the width (or height) in a single look.
+
+Both rulers exist because they measure different things. This project encodes
+column-major, so a wrong *height* slides columns sideways without tilting a
+vertical line — vertical stripes can measure width but never height. Horizontal
+bars are what a height error shows up in.
+
+### What a wrong size looks like
+
+| On the panel | Cause |
+|---|---|
+| Image drifts further sideways with each row | Width larger than the panel: rows overflow into the next |
+| Fills only part of the screen, striped | Frame encoded at a different size than it is sent as |
+| Correct but with black bars left and right | Not a bug — `--fit` preserves the source's proportions; use the default crop to fill |
+| A few black pixels along one edge | Profile is a little short of the real panel; adjust and save |
+
+Once you know the numbers, set them in Settings → Screen and press "save as
+verified" so updates keep them.
