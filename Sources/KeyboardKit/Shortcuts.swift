@@ -28,6 +28,16 @@ public struct Shortcut: Sendable, Equatable, Hashable {
     public static let rightOption = Modifiers(rawValue: 0x40)
     public static let rightCommand = Modifiers(rawValue: 0x80)
 
+    /// Mac symbols, in the order Apple writes them: ⌃⌥⇧⌘.
+    public var description: String {
+      var out = ""
+      if contains(.control) || contains(.rightControl) { out += "⌃" }
+      if contains(.option) || contains(.rightOption) { out += "⌥" }
+      if contains(.shift) || contains(.rightShift) { out += "⇧" }
+      if contains(.command) || contains(.rightCommand) { out += "⌘" }
+      return out
+    }
+
     /// Mac order, as the system writes it: ⌃⌥⇧⌘.
     public var symbols: String {
       var out = ""
@@ -100,6 +110,13 @@ public enum MacShortcuts {
     entry("fullscreen", "Full screen", .window, 0x09, [.control, .command]),
     entry("space-left", "Move a space left", .window, 0x50, [.control]),
     entry("space-right", "Move a space right", .window, 0x4F, [.control]),
+    entry("mission-control-up", "Mission Control", .window, 0x52, [.control]),
+    entry("app-windows", "Windows of this app", .window, 0x51, [.control]),
+    entry("show-desktop", "Show desktop", .window, 0x44),
+    entry("tab-next", "Next tab", .window, 0x2B, [.control]),
+    entry("tab-previous", "Previous tab", .window, 0x2B, [.control, .shift]),
+    entry("tab-close", "Close tab", .window, 0x17, [.command]),
+    entry("tab-reopen", "Reopen closed tab", .window, 0x17, [.command, .shift]),
 
     // Editing
     entry("copy", "Copy", .text, 0x06, [.command]),
@@ -111,6 +128,18 @@ public enum MacShortcuts {
     entry("select-all", "Select all", .text, 0x04, [.command]),
     entry("find", "Find", .text, 0x09, [.command]),
     entry("save", "Save", .text, 0x16, [.command]),
+    entry("zoom-in", "Zoom in", .text, 0x2E, [.command]),
+    entry("zoom-out", "Zoom out", .text, 0x2D, [.command]),
+    entry("zoom-reset", "Actual size", .text, 0x27, [.command]),
+  ]
+
+  /// Actions that make sense on a rotary control: a knob is a *pair* of
+  /// opposites, so only shortcuts that come in opposites are worth offering
+  /// for turning it. Anything else belongs on the press, or on a key.
+  public static let knobPairs: [(name: String, left: String, right: String)] = [
+    ("Spaces", "space-left", "space-right"),
+    ("Tabs", "tab-previous", "tab-next"),
+    ("Zoom", "zoom-out", "zoom-in"),
   ]
 
   public static func entries(in category: Category) -> [Entry] {

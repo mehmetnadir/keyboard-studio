@@ -229,3 +229,5 @@
 "knob.section.firmware" = "Klavye işlevleri";
 "knob.mode_note.title" = "Düğme, klavyenin kendi menüsünü mü açıyor?";
 "knob.mode_note.detail" = "Düğmenin iki modu var. Ekran modunda çevirmek klavyenin kendi ayar menüsünde gezinir ve aşağıdaki atamaları yok sayar. Ses moduna geçmek için Fn ile birlikte düğmeye bas. Bu firmware davranışıdır — hiçbir yazılım değiştiremez, klavye modu hatırlar.";
+"knob.section.macos" = "macOS eylemleri";
+"knob.section.macos" = "macOS eylemleri";

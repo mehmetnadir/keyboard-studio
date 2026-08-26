@@ -152,7 +152,9 @@ enum KeymapCommand {
         case .media(let code):
           described = Knob.mediaName(code).map { "\($0) (0x\(String(code, radix: 16)))" }
             ?? "media 0x\(String(code, radix: 16))"
-        case .key(let usage): described = "key \(KeyNames.name(for: usage))"
+        case .key(let usage, let modifiers):
+          let prefix = modifiers.isEmpty ? "" : modifiers.description + "+"
+          described = "key \(prefix)\(KeyNames.name(for: usage))"
         case .firmware(let action): described = "firmware: \(action.label)"
         case .raw(let bytes): described = bytes.map { String(format: "%02x", $0) }.joined()
         case .unassigned: described = "unassigned"

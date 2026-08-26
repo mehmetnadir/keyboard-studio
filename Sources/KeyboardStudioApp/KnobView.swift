@@ -140,6 +140,15 @@ private struct KnobActionRow: View {
             Text(action.label).tag(Self.firmwareTag + Int(action.rawValue))
           }
         }
+        // macOS actions. A knob is a pair of opposites, so turning offers the
+        // shortcuts that come in pairs (spaces, tabs, zoom) while pressing can
+        // take any of them.
+        Section("knob.section.macos") {
+          ForEach(Array(macActions.enumerated()), id: \.element.id) { index, entry in
+            Text("\(entry.name)  \(entry.shortcut.modifiers.description)")
+              .tag(Self.shortcutTag + index)
+          }
+        }
       }
       .labelsHidden()
       .frame(width: 210)
@@ -156,6 +165,16 @@ private struct KnobActionRow: View {
   /// Media codes are HID usage ids (0…255), so firmware actions are offset out
   /// of their range rather than sharing it.
   static let firmwareTag = 1000
+  static let shortcutTag = 2000
+
+  /// Turning is offered only the paired actions; pressing gets the lot.
+  private var macActions: [MacShortcuts.Entry] {
+    guard action == .press else {
+      let paired = Set(MacShortcuts.knobPairs.flatMap { [$0.left, $0.right] })
+      return MacShortcuts.all.filter { paired.contains($0.id) }
+    }
+    return MacShortcuts.all
+  }
 
   private var binding: Binding<Int> {
     Binding(
@@ -164,6 +183,13 @@ private struct KnobActionRow: View {
         switch current {
         case .media(let code): return code
         case .firmware(let action): return Self.firmwareTag + Int(action.rawValue)
+        case .key(let usage, let modifiers):
+          if let index = macActions.firstIndex(where: {
+            $0.shortcut.usage == usage && $0.shortcut.modifiers == modifiers
+          }) {
+            return Self.shortcutTag + index
+          }
+          return -1
         default: return -1
         }
       },
@@ -171,6 +197,9 @@ private struct KnobActionRow: View {
         let binding: Knob.Binding
         if tag == -1 {
           binding = .unassigned
+        } else if tag >= Self.shortcutTag {
+          let entry = macActions[tag - Self.shortcutTag]
+          binding = .key(usage: entry.shortcut.usage, modifiers: entry.shortcut.modifiers)
         } else if tag >= Self.firmwareTag,
           let action = Knob.FirmwareAction(rawValue: UInt8(tag - Self.firmwareTag))
         {
@@ -205,8 +234,10 @@ private struct KnobActionRow: View {
     switch binding {
     case .media(let code):
       Knob.mediaName(code) ?? String(format: "media 0x%02x", code)
-    case .key(let usage):
-      KeyNamesBridge.name(for: usage)
+    case .key(let usage, let modifiers):
+      modifiers.isEmpty
+        ? KeyNamesBridge.name(for: usage)
+        : "\(modifiers.description)+\(KeyNamesBridge.name(for: usage))"
     case .firmware(let action):
       action.label
     case .raw(let bytes):

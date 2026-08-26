@@ -16,8 +16,11 @@ public enum Knob {
   public enum Binding: Equatable, Sendable {
     /// Consumer-control usage (volume, media transport, brightness…).
     case media(code: Int)
-    /// Ordinary key, by HID usage id from page 0x07.
-    case key(usage: Int)
+    /// Ordinary key, by HID usage id from page 0x07, optionally with
+    /// modifiers held. The slot has always had room for them — byte 1 is the
+    /// modifier mask — so a knob can turn into "move a space left" rather than
+    /// being limited to single keys.
+    case key(usage: Int, modifiers: Shortcut.Modifiers = [])
     /// A firmware action — something the keyboard does to itself rather than
     /// a keystroke it sends. Slot type 0x0A, with the action in byte 1.
     case firmware(action: FirmwareAction)
@@ -31,8 +34,8 @@ public enum Knob {
       switch self {
       case .media(let code):
         [0x03, 0x00, UInt8(clamping: code), 0x00]
-      case .key(let usage):
-        [0x00, 0x00, UInt8(clamping: usage), 0x00]
+      case .key(let usage, let modifiers):
+        [0x00, modifiers.rawValue, UInt8(clamping: usage), 0x00]
       case .firmware(let action):
         [0x0A, action.rawValue, 0x00, 0x00]
       case .raw(let bytes):
@@ -48,8 +51,8 @@ public enum Knob {
         return
       }
       switch bytes[0] {
-      case 0x00 where bytes[2] == 0: self = .unassigned
-      case 0x00: self = .key(usage: Int(bytes[2]))
+      case 0x00 where bytes[2] == 0 && bytes[1] == 0: self = .unassigned
+      case 0x00: self = .key(usage: Int(bytes[2]), modifiers: Shortcut.Modifiers(rawValue: bytes[1]))
       case 0x03: self = .media(code: Int(bytes[2]))
       case 0x0A where FirmwareAction(rawValue: bytes[1]) != nil:
         self = .firmware(action: FirmwareAction(rawValue: bytes[1])!)
