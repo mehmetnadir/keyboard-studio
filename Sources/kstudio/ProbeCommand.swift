@@ -37,7 +37,10 @@ enum ProbeCommand {
       """
 
       A size is "accepted" when the firmware reports ready for a frame of that
-      many bytes. The largest accepted square is the panel's own resolution.
+      many bytes. Note that 2048x2048 is accepted too: this firmware does no
+      bounds checking, so acceptance says nothing about the real panel size.
+      Ask the panel instead with `kstudio screen --query`, or check a size by
+      eye with `kstudio screen --orient --size WxH`.
       """)
   }
 }
