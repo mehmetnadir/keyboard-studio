@@ -123,3 +123,42 @@ import Testing
     #expect(!DangerousCommands.isBlocked(0x0C))
   }
 }
+
+/// Guards the two bugs that made GIFs unusable on a non-square panel.
+///
+/// Both were the same mistake in different places: the animation path did not
+/// pass the frame's size, so a 128×128 default took over. Neither is visible on
+/// a square panel, which is why the original tests missed them — so these run
+/// at 235×128 deliberately.
+@Suite("Non-square screen frames")
+struct NonSquareScreenTests {
+  @Test("encoding a non-square frame produces two bytes per pixel of that frame")
+  func encodesAtFrameSize() {
+    let width = 235
+    let height = 128
+    let frame = Screen.solid((10, 20, 30), width: width, height: height)
+    let encoded = Screen.encode565(frame.rgb, width: frame.width, height: frame.height)
+    #expect(encoded.count == width * height * 2)
+    // The old bug silently encoded 128×128 and produced far too few bytes.
+    #expect(encoded.count != 128 * 128 * 2)
+  }
+
+  @Test("every pixel of a solid non-square frame encodes to the same value")
+  func encodingStaysInBounds() {
+    // A wrong row stride reads the source diagonally, so a solid colour comes
+    // back with stray values even though the byte count looks plausible.
+    let frame = Screen.solid((255, 0, 0), width: 235, height: 128)
+    let encoded = Screen.encode565(frame.rgb, width: frame.width, height: frame.height)
+    let pairs = stride(from: 0, to: encoded.count, by: 2).map {
+      UInt16(encoded[$0]) << 8 | UInt16(encoded[$0 + 1])
+    }
+    #expect(Set(pairs).count == 1)
+  }
+
+  @Test("the width ruler is wider than the panel so the device does the clipping")
+  func rulerOvershootsPanel() {
+    let frame = Screen.widthRuler(height: 128)
+    #expect(frame.width > 240)
+    #expect(frame.rgb.count == frame.width * frame.height * 3)
+  }
+}

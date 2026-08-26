@@ -137,6 +137,100 @@ public enum Screen {
     return nil
   }
 
+  /// A colour-coded ruler for reading the panel's width in one shot.
+  ///
+  /// Sweeping candidate sizes needs one look per candidate. This needs one look
+  /// total: a frame deliberately wider than the panel, marked with coloured
+  /// bars at known x positions. The device clips what does not fit, so the
+  /// rightmost colour still visible names the last position the panel reaches —
+  /// which is its width, to the spacing of the marks.
+  ///
+  /// Marks run in rainbow order so they can be reported by name without a
+  /// legend on screen, and the left edge carries a white block so the reader
+  /// can tell the image is not mirrored or offset.
+  public static let rulerMarks: [(x: Int, name: String, color: (UInt8, UInt8, UInt8))] = [
+    (204, "red", (230, 40, 40)),
+    (208, "orange", (245, 140, 30)),
+    (212, "yellow", (240, 225, 50)),
+    (216, "green", (60, 200, 70)),
+    (220, "cyan", (40, 210, 210)),
+    (224, "blue", (60, 110, 245)),
+    (228, "purple", (160, 70, 220)),
+    (232, "pink", (245, 110, 190)),
+    (236, "white", (255, 255, 255)),
+    (240, "grey", (140, 140, 150)),
+  ]
+
+  public static func widthRuler(height: Int) -> ScreenFrame {
+    let width = 248  // wider than every candidate, so the panel does the clipping
+    var rgb = [UInt8](repeating: 0, count: width * height * 3)
+    func fill(_ x0: Int, _ x1: Int, _ color: (UInt8, UInt8, UInt8)) {
+      for y in 0..<height {
+        for x in max(0, x0)..<min(width, x1) {
+          let i = (y * width + x) * 3
+          rgb[i] = color.0; rgb[i + 1] = color.1; rgb[i + 2] = color.2
+        }
+      }
+    }
+    // Orientation anchor: a white block hugging the left edge.
+    fill(0, 8, (255, 255, 255))
+    for mark in rulerMarks { fill(mark.x, mark.x + 3, mark.color) }
+    return ScreenFrame(rgb: rgb, width: width, height: height)
+  }
+
+  /// One step of a width sweep: a solid colour, white vertical stripes and a
+  /// full border.
+  ///
+  /// Reading a wrong width produces a *shear* — every row starts a fixed number
+  /// of pixels off from the one above, so straight vertical stripes lean. That
+  /// makes stripes a far better probe than a picture: leaning means wrong,
+  /// vertical means right, and no photograph or measurement is needed to tell
+  /// them apart. The background colour identifies which candidate is on screen,
+  /// so a whole list can be tried in one pass and reported back by colour.
+  public static func widthProbe(width: Int, height: Int, tint: (UInt8, UInt8, UInt8))
+    -> ScreenFrame
+  {
+    var rgb = [UInt8](repeating: 0, count: width * height * 3)
+    for pixel in 0..<(width * height) {
+      rgb[pixel * 3] = tint.0
+      rgb[pixel * 3 + 1] = tint.1
+      rgb[pixel * 3 + 2] = tint.2
+    }
+    func plot(_ x: Int, _ y: Int) {
+      guard x >= 0, x < width, y >= 0, y < height else { return }
+      let i = (y * width + x) * 3
+      rgb[i] = 255; rgb[i + 1] = 255; rgb[i + 2] = 255
+    }
+    // Stripes every 20 px, 2 px wide: thin enough to show a small lean, far
+    // enough apart to stay countable.
+    for x in stride(from: 10, to: width, by: 20) {
+      for y in 0..<height { plot(x, y); plot(x + 1, y) }
+    }
+    for x in 0..<width { plot(x, 0); plot(x, height - 1) }
+    for y in 0..<height { plot(0, y); plot(width - 1, y) }
+    return ScreenFrame(rgb: rgb, width: width, height: height)
+  }
+
+  /// Candidate panel sizes, in the order worth trying.
+  ///
+  /// The list is anchored on what the user found by trial: a width near 235 at
+  /// a height of 128. It surrounds that with the resolutions actual 1.2-inch
+  /// TFT modules ship with, since a panel is far more likely to be a catalogue
+  /// part than an arbitrary number.
+  public static let candidateSizes: [(width: Int, height: Int, name: String)] = [
+    (240, 135, "red"),
+    (240, 128, "green"),
+    (235, 128, "blue"),
+    (232, 128, "yellow"),
+    (240, 140, "magenta"),
+    (220, 128, "cyan"),
+  ]
+
+  public static let candidateTints: [(UInt8, UInt8, UInt8)] = [
+    (200, 30, 30), (30, 180, 60), (40, 90, 230),
+    (220, 180, 30), (200, 40, 200), (30, 190, 200),
+  ]
+
   /// Corner-coded orientation test.
   ///
   /// A panel accepts any frame size without complaint, so a picture that
@@ -216,9 +310,14 @@ public enum Screen {
     // half-filled, striped image on any non-square screen. Static images always
     // passed their size, so only GIFs were affected.
     let firstBytes = encode565(first.rgb, width: first.width, height: first.height)
+    // The target rectangle must describe the frame, not the 128x128 default.
+    // Announcing a 128-wide window and then sending 235-wide rows makes each
+    // row overflow into the next, which reads on the panel as an image that
+    // slides sideways a little more with every line.
     guard try canWrite(
       kb, byteLength: firstBytes.count, frameIndex: 0,
-      allFrames: UInt8(frames.count), delay: first.delayByte, layer: 0)
+      allFrames: UInt8(frames.count), delay: first.delayByte, layer: 0,
+      right: first.width, bottom: first.height)
     else { throw DeviceError.screenHandshakeFailed }
     for (index, frame) in frames.enumerated() {
       try sendChunks(

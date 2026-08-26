@@ -50,6 +50,8 @@ func usage() -> Never {
       kstudio screen <image|gif>            upload an image or GIF to the screen
       kstudio screen --test                 upload RGBW test pattern
       kstudio screen --query                ask the panel its own resolution
+      kstudio screen --sweep                try candidate sizes, one colour each
+      kstudio screen --ruler-width          read the width from one colour ruler
       kstudio screen --orient [--size WxH]  check size and rotation by eye
       kstudio screen --stats                show today's typing stats on the keyboard
       kstudio effects                       list effect names
@@ -157,7 +159,27 @@ do {
     guard args.count > 1 else { usage() }
     let kb = try Keyboard()
     defer { kb.close() }
-    if args[1] == "--query" {
+    if args[1] == "--ruler-width" {
+      let height = intOption("--height", args, default: 128, range: 32...400)
+      try Screen.writeImage(Screen.widthRuler(height: height), on: kb)
+      print("Colour ruler uploaded. Marks, left to right, 4 px apart:")
+      for mark in Screen.rulerMarks { print("  \(mark.name) → x = \(mark.x)") }
+      print("\nThe rightmost colour you can still see gives the panel width.")
+      print("A white block marks the left edge; if it is missing, tell me.")
+    } else if args[1] == "--sweep" {
+      let hold = Double(option("--hold", args) ?? "6") ?? 6
+      print("Watch the keyboard. For each colour, say whether the white stripes")
+      print("stand straight up or lean. Straight = that width is correct.\n")
+      for (index, candidate) in Screen.candidateSizes.enumerated() {
+        let tint = Screen.candidateTints[index % Screen.candidateTints.count]
+        print("  \(candidate.name.padding(toLength: 8, withPad: " ", startingAt: 0))" +
+              "\(candidate.width)×\(candidate.height)")
+        try Screen.writeImage(
+          Screen.widthProbe(width: candidate.width, height: candidate.height, tint: tint), on: kb)
+        Thread.sleep(forTimeInterval: hold)
+      }
+      print("\nDone. Which colour had straight stripes and a border on all four edges?")
+    } else if args[1] == "--query" {
       if args.contains("--verbose") {
         let packet = Proto.displayPacket(Proto.opGetDisplayParam)
         print("sending on report \(Proto.displayReportID): " +
