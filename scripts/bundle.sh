@@ -8,10 +8,18 @@ set -euo pipefail
 CONFIG="${1:-release}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP="$ROOT/build/Keyboard Studio.app"
-BINARY="$ROOT/.build/$CONFIG/KeyboardStudioApp"
+# Ask SwiftPM where it put the binary rather than assuming .build/<config>:
+# that path is a convenience symlink, and it is not always present (a clean
+# CI checkout builds straight into .build/<triple>/<config>).
+BINARY=""
 
 cd "$ROOT"
 swift build -c "$CONFIG" --product KeyboardStudioApp
+BINARY="$(swift build -c "$CONFIG" --show-bin-path)/KeyboardStudioApp"
+if [ ! -x "$BINARY" ]; then
+  echo "Built binary not found at: $BINARY" >&2
+  exit 1
+fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -20,7 +28,7 @@ cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 
 # SwiftPM keeps localizations in its own resource bundle, which Bundle.module
 # looks for next to the executable.
-for bundle in "$ROOT/.build/$CONFIG"/*.bundle; do
+for bundle in "$(dirname "$BINARY")"/*.bundle; do
   [ -e "$bundle" ] && cp -R "$bundle" "$APP/Contents/MacOS/"
 done
 
